@@ -88,24 +88,17 @@ function getEmails(db) {
 }
 
 function uploadPdfObject(pdfObj) {
-  console.log('blah 1');
-  console.log(pdfObj);
   return new Promise((resolve) => {
     const path = `compilations/${pdfObj._compilation}/${pdfObj.model}-${pdfObj._id}.pdf`;
     const fullPath = `${process.env.MANTA_APP_PUBLIC_PATH}/${path}`;
 
-    console.log('blah 2');
-    console.log(fullPath);
-
     const pdfStream = new BufferStream(pdfObj.buffer);
 
     client.put(fullPath, pdfStream, { mkdirs: true }, (err) => {
-      if (err) { console.log(`Error when uploading file: ${err.message}`); return; }
+      assert.equal(err, null);
 
-      console.log('blah 3');
       client.info(fullPath, (err, results) => { // eslint-disable-line no-shadow
         assert.equal(err, null);
-        console.log('blah 4');
 
         const updatedAt = Date.now();
         const fileUrl = `${process.env.MANTA_APP_URL}/${fullPath}`;
@@ -130,26 +123,46 @@ function uploadPdfObject(pdfObj) {
 
 MongoClient.connect(mongoUrl, (err, db) => {
   assert.equal(null, err);
+  let count = 1;
 
   getEmails(db)
   .then((emails) => {
-    return Promise.all(emails.map((email) => { return generateEmailPdf(email); }));
-  })
-  .then((pdfObjects) => {
-    ensureTmpDir();
+    console.log(`blah emails ${emails.length}`);
 
-    _.forEach(pdfObjects, (pdfObj) => {
-      // fs.writeFile(`./tmp/${pdfObj._id}.pdf`, pdfObj.buffer);
+    let p = Promise.resolve();
 
-      uploadPdfObject(pdfObj)
-      .then((result) => { console.log(result); });
+    _.forEach(emails, (email) => {
+      p = p.then(() => {
+        return generateEmailPdf(email)
+        .then((pdfObj) => {
+          return uploadPdfObject(pdfObj);
+        })
+        .then((result) => {
+          console.log(`Uploaded email ${count}`);
+          console.log(result);
+          count++;
+        });
+      });
     });
-
-    db.close();
   })
+  // .then((pdfObjects) => {
+  //   ensureTmpDir();
+  //
+  //   _.forEach(pdfObjects, (pdfObj) => {
+  //     // fs.writeFile(`./tmp/${pdfObj._id}.pdf`, pdfObj.buffer);
+  //
+  //     uploadPdfObject(pdfObj)
+  //     .then((result) => {
+  //       console.log(`Email count ${count}`);
+  //       console.log(result);
+  //       count ++;
+  //     });
+  //   });
+  //
+  //   db.close();
+  // })
   .catch((err) => { // eslint-disable-line no-shadow
-    console.log(`An error happened ${err}`);
-
+    assert.equal(err, null);
     db.close();
   });
 });

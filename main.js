@@ -110,27 +110,18 @@ function getEmails(db) {
 }
 
 function uploadPdfObject(pdfObj) {
-  console.log('blah 1');
-  console.log(pdfObj);
   return new Promise(function (resolve) {
     var path = 'compilations/' + pdfObj._compilation + '/' + pdfObj.model + '-' + pdfObj._id + '.pdf';
     var fullPath = process.env.MANTA_APP_PUBLIC_PATH + '/' + path;
 
-    console.log('blah 2');
-    console.log(fullPath);
-
     var pdfStream = new _BufferStream2['default'](pdfObj.buffer);
 
     client.put(fullPath, pdfStream, { mkdirs: true }, function (err) {
-      if (err) {
-        console.log('Error when uploading file: ' + err.message);return;
-      }
+      _assert2['default'].equal(err, null);
 
-      console.log('blah 3');
       client.info(fullPath, function (err, results) {
         // eslint-disable-line no-shadow
         _assert2['default'].equal(err, null);
-        console.log('blah 4');
 
         var updatedAt = Date.now();
         var fileUrl = process.env.MANTA_APP_URL + '/' + fullPath;
@@ -155,27 +146,44 @@ function uploadPdfObject(pdfObj) {
 
 _mongodb.MongoClient.connect(mongoUrl, function (err, db) {
   _assert2['default'].equal(null, err);
+  var count = 1;
 
   getEmails(db).then(function (emails) {
-    return Promise.all(emails.map(function (email) {
-      return generateEmailPdf(email);
-    }));
-  }).then(function (pdfObjects) {
-    ensureTmpDir();
+    console.log('blah emails ' + emails.length);
 
-    _lodash2['default'].forEach(pdfObjects, function (pdfObj) {
-      // fs.writeFile(`./tmp/${pdfObj._id}.pdf`, pdfObj.buffer);
+    var p = Promise.resolve();
 
-      uploadPdfObject(pdfObj).then(function (result) {
-        console.log(result);
+    _lodash2['default'].forEach(emails, function (email) {
+      p = p.then(function () {
+        return generateEmailPdf(email).then(function (pdfObj) {
+          return uploadPdfObject(pdfObj);
+        }).then(function (result) {
+          console.log('Uploaded email ' + count);
+          console.log(result);
+          count++;
+        });
       });
     });
-
-    db.close();
-  })['catch'](function (err) {
+  })
+  // .then((pdfObjects) => {
+  //   ensureTmpDir();
+  //
+  //   _.forEach(pdfObjects, (pdfObj) => {
+  //     // fs.writeFile(`./tmp/${pdfObj._id}.pdf`, pdfObj.buffer);
+  //
+  //     uploadPdfObject(pdfObj)
+  //     .then((result) => {
+  //       console.log(`Email count ${count}`);
+  //       console.log(result);
+  //       count ++;
+  //     });
+  //   });
+  //
+  //   db.close();
+  // })
+  ['catch'](function (err) {
     // eslint-disable-line no-shadow
-    console.log('An error happened ' + err);
-
+    _assert2['default'].equal(err, null);
     db.close();
   });
 });
