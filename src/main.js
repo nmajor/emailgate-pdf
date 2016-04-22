@@ -2,19 +2,31 @@ require('babel-polyfill');
 require('dotenv').config({ silent: true });
 
 import { MongoClient } from 'mongodb';
-import assert from 'assert';
 import pdf from 'html-pdf';
 import pdfjs from 'pdfjs-dist';
 import manta from 'manta';
 
-import fs from 'fs';
+// import fs from 'fs';
 import _ from 'lodash';
 
 import BufferStream from './BufferStream';
 
-console.log('working ');
+function log(type, message, payload) {
+  const logBuffer = new Buffer(JSON.stringify({
+    type,
+    message,
+    payload,
+  }));
 
-const tmpDir = './tmp';
+  process.stdout.write(logBuffer);
+  if (type === 'error') {
+    process.exit();
+  }
+}
+
+log('status', 'Container started and running.');
+
+// const tmpDir = './tmp';
 const mongoUrl = process.env.MONGO_URL;
 const emailQuery = { _compilation: process.env.COMPILATION_ID };
 const emailOptions = {
@@ -26,6 +38,7 @@ const emailOptions = {
     bottom: '1.2in',
     left: '0.6in',
   },
+  timeout: 120000,
 };
 const client = manta.createClient({
   sign: manta.privateKeySigner({
@@ -38,13 +51,11 @@ const client = manta.createClient({
   connectTimeout: 25000,
 });
 
-console.log('manta ready: %s', client.toString());
-
-function ensureTmpDir() {
-  if (!fs.existsSync(tmpDir)) {
-    fs.mkdirSync(tmpDir);
-  }
-}
+// function ensureTmpDir() {
+//   if (!fs.existsSync(tmpDir)) {
+//     fs.mkdirSync(tmpDir);
+//   }
+// }
 
 function getPdfPages(buffer) {
   return new Promise((resolve) => {
@@ -59,9 +70,9 @@ function generateEmailPdf(email) {
     const html = email.template.replace('[[BODY]]', email.body);
 
     return pdf.create(html, emailOptions).toBuffer((err, buffer) => {
-      assert.equal(err, null);
+      if (err) { log('error', 'An error happened while generating the email PDF.', err.message); return; }
 
-      return getPdfPages(buffer)
+      getPdfPages(buffer)
 			.then((pageCount) => {
         resolve({ // eslint-disable-line indent
           model: 'email',
@@ -80,7 +91,7 @@ function getEmails(db) {
     const collection = db.collection('emails');
     collection.find(emailQuery)
     .toArray((err, docs) => { // eslint-disable-line no-shadow
-      assert.equal(err, null);
+      if (err) { log('error', 'An error happened while getting emails.', err.message); return; }
 
       resolve(docs);
     });
@@ -95,10 +106,10 @@ function uploadPdfObject(pdfObj) {
     const pdfStream = new BufferStream(pdfObj.buffer);
 
     client.put(fullPath, pdfStream, { mkdirs: true }, (err) => {
-      assert.equal(err, null);
+      if (err) { log('error', 'An error happened while uploading the pdf.', err.message); return; }
 
       client.info(fullPath, (err, results) => { // eslint-disable-line no-shadow
-        assert.equal(err, null);
+        if (err) { log('error', 'An error happened while getting the pdf file info.', err.message); return; }
 
         const updatedAt = Date.now();
         const fileUrl = `${process.env.MANTA_APP_URL}/${fullPath}`;
@@ -122,12 +133,14 @@ function uploadPdfObject(pdfObj) {
 }
 
 MongoClient.connect(mongoUrl, (err, db) => {
-  assert.equal(null, err);
+  if (err) { log('error', 'An error happened while connecting to the database', err.message); return; }
+  log('status', 'Connected to database.');
   let count = 1;
 
   getEmails(db)
   .then((emails) => {
-    console.log(`blah emails ${emails.length}`);
+    const emailLength = emails.length;
+    log('status', `Found ${emailLength} compilation emails.`);
 
     let p = Promise.resolve();
 
@@ -135,34 +148,25 @@ MongoClient.connect(mongoUrl, (err, db) => {
       p = p.then(() => {
         return generateEmailPdf(email)
         .then((pdfObj) => {
+          // fs.writeFile(`./tmp/${pdfObj._id}.pdf`, pdfObj.buffer);
           return uploadPdfObject(pdfObj);
         })
         .then((result) => {
-          console.log(`Uploaded email ${count}`);
-          console.log(result);
+          log('email-pdf', `Added email ${result._id} ${count}/${emailLength}`, result);
           count++;
         });
       });
     });
+
+    return p;
   })
-  // .then((pdfObjects) => {
-  //   ensureTmpDir();
-  //
-  //   _.forEach(pdfObjects, (pdfObj) => {
-  //     // fs.writeFile(`./tmp/${pdfObj._id}.pdf`, pdfObj.buffer);
-  //
-  //     uploadPdfObject(pdfObj)
-  //     .then((result) => {
-  //       console.log(`Email count ${count}`);
-  //       console.log(result);
-  //       count ++;
-  //     });
-  //   });
-  //
-  //   db.close();
-  // })
+  .then(() => {
+    log('status', 'Finished generating and uploading email PDF files.');
+    log('status', 'Closing database connection.');
+    db.close();
+  })
   .catch((err) => { // eslint-disable-line no-shadow
-    assert.equal(err, null);
+    if (err) { log('error', 'An error happened', err.message); return; }
     db.close();
   });
 });

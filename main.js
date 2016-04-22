@@ -4,10 +4,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'd
 
 var _mongodb = require('mongodb');
 
-var _assert = require('assert');
-
-var _assert2 = _interopRequireDefault(_assert);
-
 var _htmlPdf = require('html-pdf');
 
 var _htmlPdf2 = _interopRequireDefault(_htmlPdf);
@@ -20,9 +16,7 @@ var _manta = require('manta');
 
 var _manta2 = _interopRequireDefault(_manta);
 
-var _fs = require('fs');
-
-var _fs2 = _interopRequireDefault(_fs);
+// import fs from 'fs';
 
 var _lodash = require('lodash');
 
@@ -35,9 +29,22 @@ var _BufferStream2 = _interopRequireDefault(_BufferStream);
 require('babel-polyfill');
 require('dotenv').config({ silent: true });
 
-console.log('working ');
+function log(type, message, payload) {
+  var logBuffer = new Buffer(JSON.stringify({
+    type: type,
+    message: message,
+    payload: payload
+  }));
 
-var tmpDir = './tmp';
+  process.stdout.write(logBuffer);
+  if (type === 'error') {
+    process.exit();
+  }
+}
+
+log('status', 'Container started and running.');
+
+// const tmpDir = './tmp';
 var mongoUrl = process.env.MONGO_URL;
 var emailQuery = { _compilation: process.env.COMPILATION_ID };
 var emailOptions = {
@@ -48,7 +55,8 @@ var emailOptions = {
     right: '0.6in',
     bottom: '1.2in',
     left: '0.6in'
-  }
+  },
+  timeout: 120000
 };
 var client = _manta2['default'].createClient({
   sign: _manta2['default'].privateKeySigner({
@@ -61,13 +69,11 @@ var client = _manta2['default'].createClient({
   connectTimeout: 25000
 });
 
-console.log('manta ready: %s', client.toString());
-
-function ensureTmpDir() {
-  if (!_fs2['default'].existsSync(tmpDir)) {
-    _fs2['default'].mkdirSync(tmpDir);
-  }
-}
+// function ensureTmpDir() {
+//   if (!fs.existsSync(tmpDir)) {
+//     fs.mkdirSync(tmpDir);
+//   }
+// }
 
 function getPdfPages(buffer) {
   return new Promise(function (resolve) {
@@ -82,9 +88,11 @@ function generateEmailPdf(email) {
     var html = email.template.replace('[[BODY]]', email.body);
 
     return _htmlPdf2['default'].create(html, emailOptions).toBuffer(function (err, buffer) {
-      _assert2['default'].equal(err, null);
+      if (err) {
+        log('error', 'An error happened while generating the email PDF.', err.message);return;
+      }
 
-      return getPdfPages(buffer).then(function (pageCount) {
+      getPdfPages(buffer).then(function (pageCount) {
         resolve({ // eslint-disable-line indent
           model: 'email',
           _id: email._id,
@@ -102,7 +110,9 @@ function getEmails(db) {
     var collection = db.collection('emails');
     collection.find(emailQuery).toArray(function (err, docs) {
       // eslint-disable-line no-shadow
-      _assert2['default'].equal(err, null);
+      if (err) {
+        log('error', 'An error happened while getting emails.', err.message);return;
+      }
 
       resolve(docs);
     });
@@ -117,11 +127,15 @@ function uploadPdfObject(pdfObj) {
     var pdfStream = new _BufferStream2['default'](pdfObj.buffer);
 
     client.put(fullPath, pdfStream, { mkdirs: true }, function (err) {
-      _assert2['default'].equal(err, null);
+      if (err) {
+        log('error', 'An error happened while uploading the pdf.', err.message);return;
+      }
 
       client.info(fullPath, function (err, results) {
         // eslint-disable-line no-shadow
-        _assert2['default'].equal(err, null);
+        if (err) {
+          log('error', 'An error happened while getting the pdf file info.', err.message);return;
+        }
 
         var updatedAt = Date.now();
         var fileUrl = process.env.MANTA_APP_URL + '/' + fullPath;
@@ -145,45 +159,40 @@ function uploadPdfObject(pdfObj) {
 }
 
 _mongodb.MongoClient.connect(mongoUrl, function (err, db) {
-  _assert2['default'].equal(null, err);
+  if (err) {
+    log('error', 'An error happened while connecting to the database', err.message);return;
+  }
+  log('status', 'Connected to database.');
   var count = 1;
 
   getEmails(db).then(function (emails) {
-    console.log('blah emails ' + emails.length);
+    var emailLength = emails.length;
+    log('status', 'Found ' + emailLength + ' compilation emails.');
 
     var p = Promise.resolve();
 
     _lodash2['default'].forEach(emails, function (email) {
       p = p.then(function () {
         return generateEmailPdf(email).then(function (pdfObj) {
+          // fs.writeFile(`./tmp/${pdfObj._id}.pdf`, pdfObj.buffer);
           return uploadPdfObject(pdfObj);
         }).then(function (result) {
-          console.log('Uploaded email ' + count);
-          console.log(result);
+          log('email-pdf', 'Added email ' + result._id + ' ' + count + '/' + emailLength, result);
           count++;
         });
       });
     });
-  })
-  // .then((pdfObjects) => {
-  //   ensureTmpDir();
-  //
-  //   _.forEach(pdfObjects, (pdfObj) => {
-  //     // fs.writeFile(`./tmp/${pdfObj._id}.pdf`, pdfObj.buffer);
-  //
-  //     uploadPdfObject(pdfObj)
-  //     .then((result) => {
-  //       console.log(`Email count ${count}`);
-  //       console.log(result);
-  //       count ++;
-  //     });
-  //   });
-  //
-  //   db.close();
-  // })
-  ['catch'](function (err) {
+
+    return p;
+  }).then(function () {
+    log('status', 'Finished generating and uploading email PDF files.');
+    log('status', 'Closing database connection.');
+    db.close();
+  })['catch'](function (err) {
     // eslint-disable-line no-shadow
-    _assert2['default'].equal(err, null);
+    if (err) {
+      log('error', 'An error happened', err.message);return;
+    }
     db.close();
   });
 });
