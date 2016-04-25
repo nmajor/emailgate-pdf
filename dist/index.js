@@ -57,7 +57,7 @@
 	// import fs from 'fs';
 	import _ from 'lodash';
 
-	import BufferStream from './BufferStream';
+	import BufferStream from './lib/BufferStream';
 
 	function log(type, message, payload) {
 	  const logBuffer = new Buffer(JSON.stringify({

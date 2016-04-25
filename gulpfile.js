@@ -10,16 +10,25 @@ var path = require('path');
 
 gulp.task('default', function () {
   return gulp.src('src/main.js')
-  .pipe(babel({ presets: ['es2015'] }))
+  // .pipe(babel({ presets: ['es2015'] }))
   .pipe(webpack({
+    devtool: 'cheap-source-map',
     target: 'node',
     watch: true,
     output: {
       path: path.join(__dirname),
       filename: 'index.js',
     },
+    resolve: {
+      extensions: ['', '.js', '.jsx', '.json']
+    },
     module: {
       loaders: [
+        {
+          test: /\.js$/,
+          exclude: /node_modules/,
+          loaders: ['babel-loader'],
+        },
         {
           test: /\.json$/,
           loaders: ['json-loader']
@@ -34,9 +43,9 @@ gulp.task('default', function () {
   // .pipe(webpack({
   //   target: 'node',
   //   watch: true,
-  //   resolve: {
-  //     extensions: ['', '.js', '.jsx', '.json']
-  //   },
+    // resolve: {
+    //   extensions: ['', '.js', '.jsx', '.json']
+    // },
     // module: {
     //   loaders: [
     //     {
