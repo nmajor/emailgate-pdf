@@ -1,7 +1,5 @@
 'use strict';
 
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
-
 var _mongodb = require('mongodb');
 
 var _htmlPdf = require('html-pdf');
@@ -16,8 +14,6 @@ var _manta = require('manta');
 
 var _manta2 = _interopRequireDefault(_manta);
 
-// import fs from 'fs';
-
 var _lodash = require('lodash');
 
 var _lodash2 = _interopRequireDefault(_lodash);
@@ -26,8 +22,15 @@ var _BufferStream = require('./BufferStream');
 
 var _BufferStream2 = _interopRequireDefault(_BufferStream);
 
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+// require('babel-register')({ presets: ['es2015'] });
+require('babel-register');
 require('babel-polyfill');
 require('dotenv').config({ silent: true });
+
+// import fs from 'fs';
+
 
 function log(type, message, payload) {
   var logBuffer = new Buffer(JSON.stringify({
@@ -58,8 +61,8 @@ var emailOptions = {
   },
   timeout: 120000
 };
-var client = _manta2['default'].createClient({
-  sign: _manta2['default'].privateKeySigner({
+var client = _manta2.default.createClient({
+  sign: _manta2.default.privateKeySigner({
     key: process.env.MANTA_APP_KEY.replace(/\\n/g, '\n'),
     keyId: process.env.MANTA_APP_KEY_ID,
     user: process.env.MANTA_APP_USER
@@ -77,7 +80,7 @@ var client = _manta2['default'].createClient({
 
 function getPdfPages(buffer) {
   return new Promise(function (resolve) {
-    _pdfjsDist2['default'].getDocument(buffer).then(function (doc) {
+    _pdfjsDist2.default.getDocument(buffer).then(function (doc) {
       resolve(doc.numPages);
     });
   });
@@ -87,7 +90,7 @@ function generateEmailPdf(email) {
   return new Promise(function (resolve) {
     var html = email.template.replace('[[BODY]]', email.body);
 
-    return _htmlPdf2['default'].create(html, emailOptions).toBuffer(function (err, buffer) {
+    return _htmlPdf2.default.create(html, emailOptions).toBuffer(function (err, buffer) {
       if (err) {
         log('error', 'An error happened while generating the email PDF.', err.message);return;
       }
@@ -124,7 +127,7 @@ function uploadPdfObject(pdfObj) {
     var path = 'compilations/' + pdfObj._compilation + '/' + pdfObj.model + '-' + pdfObj._id + '.pdf';
     var fullPath = process.env.MANTA_APP_PUBLIC_PATH + '/' + path;
 
-    var pdfStream = new _BufferStream2['default'](pdfObj.buffer);
+    var pdfStream = new _BufferStream2.default(pdfObj.buffer);
 
     client.put(fullPath, pdfStream, { mkdirs: true }, function (err) {
       if (err) {
@@ -171,7 +174,7 @@ _mongodb.MongoClient.connect(mongoUrl, function (err, db) {
 
     var p = Promise.resolve();
 
-    _lodash2['default'].forEach(emails, function (email) {
+    _lodash2.default.forEach(emails, function (email) {
       p = p.then(function () {
         return generateEmailPdf(email).then(function (pdfObj) {
           // fs.writeFile(`./tmp/${pdfObj._id}.pdf`, pdfObj.buffer);
@@ -188,7 +191,7 @@ _mongodb.MongoClient.connect(mongoUrl, function (err, db) {
     log('status', 'Finished generating and uploading email PDF files.');
     log('status', 'Closing database connection.');
     db.close();
-  })['catch'](function (err) {
+  }).catch(function (err) {
     // eslint-disable-line no-shadow
     if (err) {
       log('error', 'An error happened', err.message);return;

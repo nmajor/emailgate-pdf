@@ -1,16 +1,67 @@
-require('babel-polyfill');
-
 var gulp = require('gulp');
 var babel = require('gulp-babel');
 var mocha = require('gulp-mocha');
 var gutil = require('gulp-util');
 var gulp = require('gulp');
+var webpack = require('webpack-stream');
+var path = require('path');
 
-gulp.task('default', ['babel']);
+// gulp.task('default', ['babel']);
+
+gulp.task('default', function () {
+  return gulp.src('src/main.js')
+  .pipe(babel({ presets: ['es2015'] }))
+  .pipe(webpack({
+    target: 'node',
+    watch: true,
+    output: {
+      path: path.join(__dirname),
+      filename: 'index.js',
+    },
+    module: {
+      loaders: [
+        {
+          test: /\.json$/,
+          loaders: ['json-loader']
+        },
+      ]
+    },
+  }))
+  .pipe(gulp.dest('dist/'));
+
+  // return gulp.src('src/main.js')
+  // // .pipe(babel({ presets: ['es2015'] }))
+  // .pipe(webpack({
+  //   target: 'node',
+  //   watch: true,
+  //   resolve: {
+  //     extensions: ['', '.js', '.jsx', '.json']
+  //   },
+    // module: {
+    //   loaders: [
+    //     {
+    //       test: /\.js$/,
+    //       exclude: /node_modules/,
+    //       loaders: ['babel-loader'],
+    //     },
+    //     {
+    //       test: /\.json$/,
+    //       loaders: ['json-loader']
+    //     },
+    //   ]
+    // },
+  //   output: {
+  //     path: path.join(__dirname),
+  //     filename: 'index.js',
+  //   },
+  // }))
+  // .on('error', notify)
+  // .pipe(gulp.dest('./'));
+});
 
 gulp.task('babel', () => {
-  return gulp.src('src/*.js')
-    .pipe(babel())
+  return gulp.src('src/main.js')
+    .pipe(babel({ presets: ['es2015'] }))
     .pipe(gulp.dest('./'));
 });
 

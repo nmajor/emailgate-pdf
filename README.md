@@ -14,7 +14,12 @@ Downloading https://github.com/Medium/phantomjs/releases/download/v2.1.1//phanto
 Saving to /var/app/node_modules/phantomjs-prebuilt/phantomjs/phantomjs-2.1.1-linux-x86_64.tar.bz2
 Receiving...
 
+### Tasks
 
+- Generate Email pdfs
+- Generate Page pdfs
+- Generate Page Number pdfs
+- Compile the whole compilation document
 
 ### Docker Notes
 
@@ -34,4 +39,5 @@ curl https://192.168.99.100:2376/images/json \
   --cacert ~/.docker/machine/machines/default/ca.pem
 
 
+docker stop $(docker ps -a -q)
 docker rm $(docker ps -a -q)

@@ -1,3 +1,5 @@
+// require('babel-register')({ presets: ['es2015'] });
+require('babel-register');
 require('babel-polyfill');
 require('dotenv').config({ silent: true });
 
@@ -9,7 +11,7 @@ import manta from 'manta';
 // import fs from 'fs';
 import _ from 'lodash';
 
-import BufferStream from './BufferStream';
+import BufferStream from './lib/BufferStream';
 
 function log(type, message, payload) {
   const logBuffer = new Buffer(JSON.stringify({
