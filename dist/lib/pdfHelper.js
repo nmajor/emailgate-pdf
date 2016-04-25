@@ -17,6 +17,10 @@ var _pdfjsDist2 = _interopRequireDefault(_pdfjsDist);
 
 var _logHelper = require('./logHelper');
 
+var _BufferStream = require('./BufferStream');
+
+var _BufferStream2 = _interopRequireDefault(_BufferStream);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function getPdfPages(buffer) {
@@ -27,9 +31,9 @@ function getPdfPages(buffer) {
   });
 }
 
-function buildPdf(html, model, obj) {
+function buildPdf(html, model, obj, options) {
   return new Promise(function (resolve) {
-    return _htmlPdf2.default.create(html, emailOptions).toBuffer(function (err, buffer) {
+    return _htmlPdf2.default.create(html, options).toBuffer(function (err, buffer) {
       if (err) {
         (0, _logHelper.log)('error', 'An error happened while generating a ' + model + ' PDF.', err.message);return;
       }
@@ -47,12 +51,12 @@ function buildPdf(html, model, obj) {
   });
 }
 
-function uploadPdfObject(pdfObj) {
+function uploadPdfObject(pdfObj, client) {
   return new Promise(function (resolve) {
     var path = 'compilations/' + pdfObj._compilation + '/' + pdfObj.model + '-' + pdfObj._id + '.pdf';
     var fullPath = process.env.MANTA_APP_PUBLIC_PATH + '/' + path;
 
-    var pdfStream = new BufferStream(pdfObj.buffer);
+    var pdfStream = new _BufferStream2.default(pdfObj.buffer);
 
     client.put(fullPath, pdfStream, { mkdirs: true }, function (err) {
       if (err) {

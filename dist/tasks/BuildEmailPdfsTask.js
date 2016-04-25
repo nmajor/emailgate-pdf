@@ -14,31 +14,40 @@ var _logHelper = require('../lib/logHelper');
 
 var _pdfHelper = require('../lib/pdfHelper');
 
-var _pdfHelper2 = _interopRequireDefault(_pdfHelper);
+var pdfHelper = _interopRequireWildcard(_pdfHelper);
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var BuildEmailPdfs = function () {
-  function BuildEmailPdfs(options) {
-    _classCallCheck(this, BuildEmailPdfs);
+var BuildEmailPdfsTask = function () {
+  function BuildEmailPdfsTask(options) {
+    _classCallCheck(this, BuildEmailPdfsTask);
 
     this.db = options.db;
     this.props = options.props;
     this.config = options.config;
+
+    this.emailQuery = this.emailQuery.bind(this);
+    this.buildEmailPdf = this.buildEmailPdf.bind(this);
+    this.getEmails = this.getEmails.bind(this);
+    this.buildPdfForEmails = this.buildPdfForEmails.bind(this);
   }
 
-  _createClass(BuildEmailPdfs, [{
+  _createClass(BuildEmailPdfsTask, [{
     key: 'emailQuery',
     value: function emailQuery() {
-      return { _id: this.props.emailIds };
+      return {
+        _id: { $in: this.props.emailIds }
+      };
     }
   }, {
     key: 'buildEmailPdf',
     value: function buildEmailPdf(email) {
       var html = email.template.replace('[[BODY]]', email.body);
-      return _pdfHelper2.default.buildPdf(html, 'email', email);
+      return pdfHelper.buildPdf(html, 'email', email, this.config.emailOptions);
     }
   }, {
     key: 'getEmails',
@@ -70,7 +79,7 @@ var BuildEmailPdfs = function () {
       _lodash2.default.forEach(emails, function (email) {
         p = p.then(function () {
           return _this2.buildEmailPdf(email).then(function (pdfObj) {
-            return _pdfHelper2.default.uploadPdfObject(pdfObj);
+            return pdfHelper.uploadPdfObject(pdfObj, _this2.config.mantaClient);
           }).then(function (result) {
             (0, _logHelper.log)('email-pdf', 'Added email ' + result._id + ' ' + count + '/' + emailLength, result);
             count++;
@@ -83,16 +92,11 @@ var BuildEmailPdfs = function () {
   }, {
     key: 'run',
     value: function run() {
-      console.log('blah running BuildEmailPdfsTask');
-      console.log(this.db);
-      console.log(this.props);
-      console.log(this.config);
-
       return this.getEmails().then(this.buildPdfForEmails);
     }
   }]);
 
-  return BuildEmailPdfs;
+  return BuildEmailPdfsTask;
 }();
 
-exports.default = BuildEmailPdfs;
+exports.default = BuildEmailPdfsTask;

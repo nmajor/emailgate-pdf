@@ -1,21 +1,28 @@
 import _ from 'lodash';
 import { log } from '../lib/logHelper';
-import pdfHelper from '../lib/pdfHelper';
+import * as pdfHelper from '../lib/pdfHelper';
 
-export default class BuildEmailPdfs {
+class BuildEmailPdfsTask {
   constructor(options) {
     this.db = options.db;
     this.props = options.props;
     this.config = options.config;
+
+    this.emailQuery = this.emailQuery.bind(this);
+    this.buildEmailPdf = this.buildEmailPdf.bind(this);
+    this.getEmails = this.getEmails.bind(this);
+    this.buildPdfForEmails = this.buildPdfForEmails.bind(this);
   }
 
   emailQuery() {
-    return { _id: this.props.emailIds };
+    return {
+      _id: { $in: this.props.emailIds },
+    };
   }
 
   buildEmailPdf(email) {
     const html = email.template.replace('[[BODY]]', email.body);
-    return pdfHelper.buildPdf(html, 'email', email);
+    return pdfHelper.buildPdf(html, 'email', email, this.config.emailOptions);
   }
 
   getEmails() {
@@ -41,7 +48,7 @@ export default class BuildEmailPdfs {
       p = p.then(() => {
         return this.buildEmailPdf(email)
         .then((pdfObj) => {
-          return pdfHelper.uploadPdfObject(pdfObj);
+          return pdfHelper.uploadPdfObject(pdfObj, this.config.mantaClient);
         })
         .then((result) => {
           log('email-pdf', `Added email ${result._id} ${count}/${emailLength}`, result);
@@ -54,12 +61,9 @@ export default class BuildEmailPdfs {
   }
 
   run() {
-    console.log('blah running BuildEmailPdfsTask');
-    console.log(this.db);
-    console.log(this.props);
-    console.log(this.config);
-
     return this.getEmails()
     .then(this.buildPdfForEmails);
   }
 }
+
+export default BuildEmailPdfsTask;

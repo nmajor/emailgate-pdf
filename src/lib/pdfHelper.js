@@ -1,6 +1,7 @@
 import pdf from 'html-pdf';
 import pdfjs from 'pdfjs-dist';
 import { log } from './logHelper';
+import BufferStream from './BufferStream';
 
 export function getPdfPages(buffer) {
   return new Promise((resolve) => {
@@ -10,9 +11,9 @@ export function getPdfPages(buffer) {
   });
 }
 
-export function buildPdf(html, model, obj) {
+export function buildPdf(html, model, obj, options) {
   return new Promise((resolve) => {
-    return pdf.create(html, emailOptions).toBuffer((err, buffer) => {
+    return pdf.create(html, options).toBuffer((err, buffer) => {
       if (err) { log('error', `An error happened while generating a ${model} PDF.`, err.message); return; }
 
       getPdfPages(buffer)
@@ -29,7 +30,7 @@ export function buildPdf(html, model, obj) {
   });
 }
 
-export function uploadPdfObject(pdfObj) {
+export function uploadPdfObject(pdfObj, client) {
   return new Promise((resolve) => {
     const path = `compilations/${pdfObj._compilation}/${pdfObj.model}-${pdfObj._id}.pdf`;
     const fullPath = `${process.env.MANTA_APP_PUBLIC_PATH}/${path}`;
