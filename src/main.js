@@ -1,7 +1,6 @@
 // require('babel-register')({ presets: ['es2015'] });
 require('babel-register');
 require('babel-polyfill');
-require('dotenv').config({ silent: true });
 
 import { MongoClient } from 'mongodb';
 import pdf from 'html-pdf';
