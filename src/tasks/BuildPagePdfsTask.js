@@ -30,7 +30,7 @@ class BuildPagePdfsTask {
       const collection = this.db.collection('pages');
       collection.find(this.pageQuery())
       .toArray((err, docs) => {
-        if (err) { log('error', 'An error happened while getting emails.', err.message); return; }
+        if (err) { log('error', 'An error happened while getting pages.', err.message); return; }
 
         resolve(docs);
       });
@@ -39,8 +39,8 @@ class BuildPagePdfsTask {
 
   buildPdfForPages(pages) {
     let count = 1;
-    const pageLength = pages.length;
-    log('status', `Found ${pageLength} compilation pages.`);
+    const pageCount = pages.length;
+    log('status', `Found ${pageCount} compilation pages.`);
 
     let p = Promise.resolve();
 
@@ -51,7 +51,7 @@ class BuildPagePdfsTask {
           return pdfHelper.uploadPdfObject(pdfObj, this.config.mantaClient);
         })
         .then((result) => {
-          log('page-pdf', `Added page pdf ${result._id} ${count}/${pageLength}`, result);
+          log('page-pdf', `Added page pdf ${result._id} ${count}/${pageCount}`, result);
           count++;
         });
       });

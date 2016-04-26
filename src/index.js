@@ -9,6 +9,8 @@ import { log } from './lib/logHelper';
 
 import BuildEmailPdfsTask from './tasks/BuildEmailPdfsTask';
 import BuildPagePdfsTask from './tasks/BuildPagePdfsTask';
+import BuildCompilationPdfTask from './tasks/BuildCompilationPdfTask';
+
 
 // Define variables
 // ****************
@@ -54,6 +56,8 @@ function taskFactory(task, db) {
       return new BuildEmailPdfsTask({ db, props: task.props, config });
     case 'build-page-pdfs' :
       return new BuildPagePdfsTask({ db, props: task.props, config });
+    case 'build-compilation-pdf' :
+      return new BuildCompilationPdfTask({ db, props: task.props, config });
     default:
       log('status', `Could not find task named ${task.name}.`);
       return { run: () => {} };

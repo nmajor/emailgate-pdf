@@ -18,6 +18,10 @@ var _BuildPagePdfsTask = require('./tasks/BuildPagePdfsTask');
 
 var _BuildPagePdfsTask2 = _interopRequireDefault(_BuildPagePdfsTask);
 
+var _BuildCompilationPdfTask = require('./tasks/BuildCompilationPdfTask');
+
+var _BuildCompilationPdfTask2 = _interopRequireDefault(_BuildCompilationPdfTask);
+
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -71,6 +75,8 @@ function taskFactory(task, db) {
       return new _BuildEmailPdfsTask2.default({ db: db, props: task.props, config: config });
     case 'build-page-pdfs':
       return new _BuildPagePdfsTask2.default({ db: db, props: task.props, config: config });
+    case 'build-compilation-pdf':
+      return new _BuildCompilationPdfTask2.default({ db: db, props: task.props, config: config });
     default:
       (0, _logHelper.log)('status', 'Could not find task named ' + task.name + '.');
       return { run: function run() {} };

@@ -3,6 +3,9 @@ import pdfjs from 'pdfjs-dist';
 import { log } from './logHelper';
 import BufferStream from './BufferStream';
 
+import https from 'https';
+import fs from 'fs';
+
 export function getPdfPages(buffer) {
   return new Promise((resolve) => {
     pdfjs.getDocument(buffer).then((doc) => {
@@ -32,7 +35,8 @@ export function buildPdf(html, model, obj, options) {
 
 export function uploadPdfObject(pdfObj, client) {
   return new Promise((resolve) => {
-    const path = `compilations/${pdfObj._compilation}/${pdfObj.model}-${pdfObj._id}.pdf`;
+    const filename = `${pdfObj.model}-${pdfObj._id}.pdf`;
+    const path = `compilations/${pdfObj._compilation}/${filename}`;
     const fullPath = `${process.env.MANTA_APP_PUBLIC_PATH}/${path}`;
 
     const pdfStream = new BufferStream(pdfObj.buffer);
@@ -50,6 +54,7 @@ export function uploadPdfObject(pdfObj, client) {
         resolve({
           model: pdfObj.model,
           _id: pdfObj._id,
+          filename,
           pageCount: pdfObj.pageCount,
           url: fileUrl,
           updatedAt,
@@ -60,6 +65,31 @@ export function uploadPdfObject(pdfObj, client) {
           md5: results.md5,
           size: results.size,
         });
+      });
+    });
+  });
+}
+
+export function downloadPdf(pdfObj) {
+  return new Promise((resolve, reject) => {
+    const dir = '/tmp/compilation';
+
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+
+    const localPath = `${dir}/${pdfObj.filename}`;
+    const file = fs.createWriteStream(localPath);
+    https.get(pdfObj.url, (stream) => {
+      stream.pipe(file);
+
+      stream.on('end', () => {
+        resolve(localPath);
+      });
+
+      stream.on('error', (err) => {
+        log('error', 'An error happened while downloading the pdf.', err.message);
+        reject();
       });
     });
   });
