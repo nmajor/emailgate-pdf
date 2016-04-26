@@ -40,16 +40,17 @@ export function uploadPdfObject(pdfObj, client) {
     client.put(fullPath, pdfStream, { mkdirs: true }, (err) => {
       if (err) { log('error', 'An error happened while uploading the pdf.', err.message); return; }
 
+      const updatedAt = Date.now();
+
       client.info(fullPath, (err, results) => { // eslint-disable-line no-shadow
         if (err) { log('error', 'An error happened while getting the pdf file info.', err.message); return; }
 
-        const updatedAt = Date.now();
         const fileUrl = `${process.env.MANTA_APP_URL}/${fullPath}`;
 
         resolve({
           model: pdfObj.model,
           _id: pdfObj._id,
-          pdfPageCount: pdfObj.pageCount,
+          pageCount: pdfObj.pageCount,
           url: fileUrl,
           updatedAt,
           path: fullPath,

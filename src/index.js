@@ -8,6 +8,7 @@ import * as dbHelper from './lib/dbHelper';
 import { log } from './lib/logHelper';
 
 import BuildEmailPdfsTask from './tasks/BuildEmailPdfsTask';
+import BuildPagePdfsTask from './tasks/BuildPagePdfsTask';
 
 // Define variables
 // ****************
@@ -22,6 +23,11 @@ const config = {
       bottom: '1.2in',
       left: '0.6in',
     },
+    timeout: 120000,
+  },
+  pageOptions: {
+    height: '10.5in',
+    width: '8in',
     timeout: 120000,
   },
   mantaClient: manta.createClient({
@@ -46,6 +52,8 @@ function taskFactory(task, db) {
   switch (task.name) {
     case 'build-email-pdfs' :
       return new BuildEmailPdfsTask({ db, props: task.props, config });
+    case 'build-page-pdfs' :
+      return new BuildPagePdfsTask({ db, props: task.props, config });
     default:
       log('status', `Could not find task named ${task.name}.`);
       return { run: () => {} };

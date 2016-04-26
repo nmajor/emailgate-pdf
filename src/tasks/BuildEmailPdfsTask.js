@@ -51,7 +51,7 @@ class BuildEmailPdfsTask {
           return pdfHelper.uploadPdfObject(pdfObj, this.config.mantaClient);
         })
         .then((result) => {
-          log('email-pdf', `Added email ${result._id} ${count}/${emailLength}`, result);
+          log('email-pdf', `Added email pdf ${result._id} ${count}/${emailLength}`, result);
           count++;
         });
       });

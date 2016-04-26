@@ -22,41 +22,41 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var BuildEmailPdfsTask = function () {
-  function BuildEmailPdfsTask(options) {
-    _classCallCheck(this, BuildEmailPdfsTask);
+var BuildPagePdfsTask = function () {
+  function BuildPagePdfsTask(options) {
+    _classCallCheck(this, BuildPagePdfsTask);
 
     this.db = options.db;
     this.props = options.props;
     this.config = options.config;
 
-    this.emailQuery = this.emailQuery.bind(this);
-    this.buildEmailPdf = this.buildEmailPdf.bind(this);
-    this.getEmails = this.getEmails.bind(this);
-    this.buildPdfForEmails = this.buildPdfForEmails.bind(this);
+    this.pageQuery = this.pageQuery.bind(this);
+    this.buildPagePdf = this.buildPagePdf.bind(this);
+    this.getPages = this.getPages.bind(this);
+    this.buildPdfForPages = this.buildPdfForPages.bind(this);
   }
 
-  _createClass(BuildEmailPdfsTask, [{
-    key: 'emailQuery',
-    value: function emailQuery() {
+  _createClass(BuildPagePdfsTask, [{
+    key: 'pageQuery',
+    value: function pageQuery() {
       return {
-        _id: { $in: this.props.emailIds }
+        _id: { $in: this.props.pageIds }
       };
     }
   }, {
-    key: 'buildEmailPdf',
-    value: function buildEmailPdf(email) {
-      var html = email.template.replace('[[BODY]]', email.body);
-      return pdfHelper.buildPdf(html, 'email', email, this.config.emailOptions);
+    key: 'buildPagePdf',
+    value: function buildPagePdf(page) {
+      var html = page.html;
+      return pdfHelper.buildPdf(html, 'page', page, this.config.pageOptions);
     }
   }, {
-    key: 'getEmails',
-    value: function getEmails() {
+    key: 'getPages',
+    value: function getPages() {
       var _this = this;
 
       return new Promise(function (resolve) {
-        var collection = _this.db.collection('emails');
-        collection.find(_this.emailQuery()).toArray(function (err, docs) {
+        var collection = _this.db.collection('pages');
+        collection.find(_this.pageQuery()).toArray(function (err, docs) {
           if (err) {
             (0, _logHelper.log)('error', 'An error happened while getting emails.', err.message);return;
           }
@@ -66,22 +66,22 @@ var BuildEmailPdfsTask = function () {
       });
     }
   }, {
-    key: 'buildPdfForEmails',
-    value: function buildPdfForEmails(emails) {
+    key: 'buildPdfForPages',
+    value: function buildPdfForPages(pages) {
       var _this2 = this;
 
       var count = 1;
-      var emailLength = emails.length;
-      (0, _logHelper.log)('status', 'Found ' + emailLength + ' compilation emails.');
+      var pageLength = pages.length;
+      (0, _logHelper.log)('status', 'Found ' + pageLength + ' compilation pages.');
 
       var p = Promise.resolve();
 
-      _lodash2.default.forEach(emails, function (email) {
+      _lodash2.default.forEach(pages, function (page) {
         p = p.then(function () {
-          return _this2.buildEmailPdf(email).then(function (pdfObj) {
+          return _this2.buildPagePdf(page).then(function (pdfObj) {
             return pdfHelper.uploadPdfObject(pdfObj, _this2.config.mantaClient);
           }).then(function (result) {
-            (0, _logHelper.log)('email-pdf', 'Added email pdf ' + result._id + ' ' + count + '/' + emailLength, result);
+            (0, _logHelper.log)('page-pdf', 'Added page pdf ' + result._id + ' ' + count + '/' + pageLength, result);
             count++;
           });
         });
@@ -92,11 +92,11 @@ var BuildEmailPdfsTask = function () {
   }, {
     key: 'run',
     value: function run() {
-      return this.getEmails().then(this.buildPdfForEmails);
+      return this.getPages().then(this.buildPdfForPages);
     }
   }]);
 
-  return BuildEmailPdfsTask;
+  return BuildPagePdfsTask;
 }();
 
-exports.default = BuildEmailPdfsTask;
+exports.default = BuildPagePdfsTask;

@@ -1,9 +1,9 @@
 ## gulp-es6-webpack-example
 
-docker kill emailgate-pdf
-docker rm emailgate-pdf
-docker build -t emailgate-pdf .
-docker run -t -i --env-file ./.env emailgate-pdf /bin/bash
+docker kill emailgate-worker
+docker rm emailgate-worker
+docker build -t emailgate-worker .
+docker run -t -i --env-file ./.env emailgate-worker /bin/bash
 
 
 > phantomjs-prebuilt@2.1.7 install /var/app/node_modules/phantomjs-prebuilt

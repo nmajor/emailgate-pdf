@@ -63,19 +63,20 @@ function uploadPdfObject(pdfObj, client) {
         (0, _logHelper.log)('error', 'An error happened while uploading the pdf.', err.message);return;
       }
 
+      var updatedAt = Date.now();
+
       client.info(fullPath, function (err, results) {
         // eslint-disable-line no-shadow
         if (err) {
           (0, _logHelper.log)('error', 'An error happened while getting the pdf file info.', err.message);return;
         }
 
-        var updatedAt = Date.now();
         var fileUrl = process.env.MANTA_APP_URL + '/' + fullPath;
 
         resolve({
           model: pdfObj.model,
           _id: pdfObj._id,
-          pdfPageCount: pdfObj.pageCount,
+          pageCount: pdfObj.pageCount,
           url: fileUrl,
           updatedAt: updatedAt,
           path: fullPath,

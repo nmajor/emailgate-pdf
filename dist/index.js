@@ -14,6 +14,10 @@ var _BuildEmailPdfsTask = require('./tasks/BuildEmailPdfsTask');
 
 var _BuildEmailPdfsTask2 = _interopRequireDefault(_BuildEmailPdfsTask);
 
+var _BuildPagePdfsTask = require('./tasks/BuildPagePdfsTask');
+
+var _BuildPagePdfsTask2 = _interopRequireDefault(_BuildPagePdfsTask);
+
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -38,6 +42,11 @@ var config = {
     },
     timeout: 120000
   },
+  pageOptions: {
+    height: '10.5in',
+    width: '8in',
+    timeout: 120000
+  },
   mantaClient: _manta2.default.createClient({
     sign: _manta2.default.privateKeySigner({
       key: process.env.MANTA_APP_KEY.replace(/\\n/g, '\n'),
@@ -60,6 +69,8 @@ function taskFactory(task, db) {
   switch (task.name) {
     case 'build-email-pdfs':
       return new _BuildEmailPdfsTask2.default({ db: db, props: task.props, config: config });
+    case 'build-page-pdfs':
+      return new _BuildPagePdfsTask2.default({ db: db, props: task.props, config: config });
     default:
       (0, _logHelper.log)('status', 'Could not find task named ' + task.name + '.');
       return { run: function run() {} };
