@@ -7,6 +7,13 @@ class BuildCompilationPdfTask {
     this.db = options.db;
     this.props = options.props;
     this.config = options.config;
+
+    this.getEmails = this.getEmails.bind(this);
+    this.getPages = this.getPages.bind(this);
+    this.downloadEmails = this.downloadEmails.bind(this);
+    this.downloadPages = this.downloadPages.bind(this);
+    this.compilePdfDocuments = this.compilePdfDocuments.bind(this);
+    this.getCompilationPdfPages = this.getCompilationPdfPages.bind(this);
   }
 
   getEmails() {
@@ -16,7 +23,7 @@ class BuildCompilationPdfTask {
       .toArray((err, docs) => {
         if (err) { log('error', 'An error happened while getting emails.', err.message); return; }
 
-        resolve(docs);
+        resolve(docs.slice(0, 5));
       });
     });
   }
@@ -82,25 +89,26 @@ class BuildCompilationPdfTask {
       ]);
 
       const pdfBuffers = [];
-      let pdfBuffer;
-      pdftk.stdout.on('data', (d) => { pdfBuffers.push(d); });
+      pdftk.stdout.on('data', (chunk) => { pdfBuffers.push(chunk); });
       pdftk.stdout.on('end', () => {
-        const buffer = Buffer.concat(pdfBuffer);
-
-        pdfHelper.getPdfPages(buffer)
-        .then((pageCount) => {
-          resolve({ // eslint-disable-line indent
-            model: 'compilation',
-            _id: this.props.compilationId,
-            pageCount,
-            buffer,
-          });
-        });
+        resolve(Buffer.concat(pdfBuffers));
       });
 
-      pdftk.stderr.on('data', (err) => {
-        log('error', 'An error happened with the pdftk command.', err.message);
-        reject();
+      pdftk.stderr.on('data', (chunk) => {
+        log('error', 'An error happened with the pdftk command.', chunk.toString('utf8'));
+        reject('An error happened with the pdftk command.');
+      });
+    });
+  }
+
+  getCompilationPdfPages(buffer) {
+    return pdfHelper.getPdfPages(buffer)
+    .then((pageCount) => {
+      return Promise.resolve({
+        model: 'compilation',
+        _id: this.props.compilationId,
+        pageCount,
+        buffer,
       });
     });
   }
@@ -112,6 +120,7 @@ class BuildCompilationPdfTask {
     ])
     .then((results) => {
       const [emails, pages] = results;
+      log('status', `Found compilation emails(${emails.length}) and pages(${pages.length}).`);
 
       return Promise.all([
         this.downloadEmails(emails),
@@ -120,10 +129,13 @@ class BuildCompilationPdfTask {
     })
     .then((results) => {
       const [emails, pages] = results;
+      log('status', 'Downloaded email and page pdf files.');
 
       return this.compilePdfDocuments(emails, pages);
     })
+    .then(this.getCompilationPdfPages)
     .then((pdfObj) => {
+      log('status', `Compiled the pdfs into one ${pdfObj.pageCount} page file.`);
       return pdfHelper.uploadPdfObject(pdfObj, this.config.mantaClient);
     })
     .then((result) => {

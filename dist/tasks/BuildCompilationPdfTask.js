@@ -33,6 +33,13 @@ var BuildCompilationPdfTask = function () {
     this.db = options.db;
     this.props = options.props;
     this.config = options.config;
+
+    this.getEmails = this.getEmails.bind(this);
+    this.getPages = this.getPages.bind(this);
+    this.downloadEmails = this.downloadEmails.bind(this);
+    this.downloadPages = this.downloadPages.bind(this);
+    this.compilePdfDocuments = this.compilePdfDocuments.bind(this);
+    this.getCompilationPdfPages = this.getCompilationPdfPages.bind(this);
   }
 
   _createClass(BuildCompilationPdfTask, [{
@@ -47,7 +54,7 @@ var BuildCompilationPdfTask = function () {
             (0, _logHelper.log)('error', 'An error happened while getting emails.', err.message);return;
           }
 
-          resolve(docs);
+          resolve(docs.slice(0, 5));
         });
       });
     }
@@ -122,33 +129,37 @@ var BuildCompilationPdfTask = function () {
         var pdftk = spawn('pdftk', [].concat(_toConsumableArray(pageFileArguments), _toConsumableArray(emailFileArguments), ['cat', 'output', '-']));
 
         var pdfBuffers = [];
-        var pdfBuffer = void 0;
-        pdftk.stdout.on('data', function (d) {
-          pdfBuffers.push(d);
+        pdftk.stdout.on('data', function (chunk) {
+          pdfBuffers.push(chunk);
         });
         pdftk.stdout.on('end', function () {
-          var buffer = Buffer.concat(pdfBuffer);
-
-          pdfHelper.getPdfPages(buffer).then(function (pageCount) {
-            resolve({ // eslint-disable-line indent
-              model: 'compilation',
-              _id: _this3.props.compilationId,
-              pageCount: pageCount,
-              buffer: buffer
-            });
-          });
+          resolve(Buffer.concat(pdfBuffers));
         });
 
-        pdftk.stderr.on('data', function (err) {
-          (0, _logHelper.log)('error', 'An error happened with the pdftk command.', err.message);
-          reject();
+        pdftk.stderr.on('data', function (chunk) {
+          (0, _logHelper.log)('error', 'An error happened with the pdftk command.', chunk.toString('utf8'));
+          reject('An error happened with the pdftk command.');
+        });
+      });
+    }
+  }, {
+    key: 'getCompilationPdfPages',
+    value: function getCompilationPdfPages(buffer) {
+      var _this4 = this;
+
+      return pdfHelper.getPdfPages(buffer).then(function (pageCount) {
+        return Promise.resolve({
+          model: 'compilation',
+          _id: _this4.props.compilationId,
+          pageCount: pageCount,
+          buffer: buffer
         });
       });
     }
   }, {
     key: 'run',
     value: function run() {
-      var _this4 = this;
+      var _this5 = this;
 
       return Promise.all([this.getEmails(), this.getPages()]).then(function (results) {
         var _results = _slicedToArray(results, 2);
@@ -156,18 +167,21 @@ var BuildCompilationPdfTask = function () {
         var emails = _results[0];
         var pages = _results[1];
 
+        (0, _logHelper.log)('status', 'Found compilation emails(' + emails.length + ') and pages(' + pages.length + ').');
 
-        return Promise.all([_this4.downloadEmails(emails), _this4.downloadPages(pages)]);
+        return Promise.all([_this5.downloadEmails(emails), _this5.downloadPages(pages)]);
       }).then(function (results) {
         var _results2 = _slicedToArray(results, 2);
 
         var emails = _results2[0];
         var pages = _results2[1];
 
+        (0, _logHelper.log)('status', 'Downloaded email and page pdf files.');
 
-        return _this4.compilePdfDocuments(emails, pages);
-      }).then(function (pdfObj) {
-        return pdfHelper.uploadPdfObject(pdfObj, _this4.config.mantaClient);
+        return _this5.compilePdfDocuments(emails, pages);
+      }).then(this.getCompilationPdfPages).then(function (pdfObj) {
+        (0, _logHelper.log)('status', 'Compiled the pdfs into one ' + pdfObj.pageCount + ' page file.');
+        return pdfHelper.uploadPdfObject(pdfObj, _this5.config.mantaClient);
       }).then(function (result) {
         (0, _logHelper.log)('compilation-pdf', 'Added compilation pdf ' + result._id, result);
         return Promise.resolve();
