@@ -11,6 +11,7 @@ class BuildCompilationPdfTask {
     this.getEmails = this.getEmails.bind(this);
     this.getPages = this.getPages.bind(this);
     this.downloadEmails = this.downloadEmails.bind(this);
+    this.addPageNumberToEmail = this.addPageNumberToEmail.bind(this);
     this.downloadPages = this.downloadPages.bind(this);
     this.compilePdfDocuments = this.compilePdfDocuments.bind(this);
     this.getCompilationPdfPages = this.getCompilationPdfPages.bind(this);
@@ -23,7 +24,7 @@ class BuildCompilationPdfTask {
       .toArray((err, docs) => {
         if (err) { log('error', 'An error happened while getting emails.', err.message); return; }
 
-        resolve(docs.slice(0, 5));
+        resolve(docs);
       });
     });
   }
@@ -50,9 +51,33 @@ class BuildCompilationPdfTask {
         log('status', `Downloaded pdf file ${email.pdf.filename} ${count}/${emailCount}`);
         count++;
         email.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
-        return Promise.resolve(email);
+        return this.addPageNumberToEmail(email);
       });
     }));
+  }
+
+  addPageNumberToEmail(email) {
+    return new Promise((resolve, reject) => {
+      const oldPath = email.pdf.localPath;
+      const newPath = oldPath.replace(/\.pdf$/, '-paged.pdf');
+      const startingPage = this.props.emailPageMap[email._id];
+      const spawn = require('child_process').spawn;
+      const pspdftool = spawn('pspdftool', [
+        `number(x=-1pt,y=-1pt,start=${startingPage},size=10)`,
+        oldPath,
+        newPath,
+      ]);
+
+      pspdftool.on('close', (code) => {
+        if (code === 0) {
+          email.pdf.localPath = newPath; // eslint-disable-line no-param-reassign
+          log('status', `Added page numbers to ${email.pdf.filename}`);
+          resolve(email);
+        } else {
+          reject('pspdftool returned a bad exit code.');
+        }
+      });
+    });
   }
 
   downloadPages(pages) {

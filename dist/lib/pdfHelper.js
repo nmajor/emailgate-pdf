@@ -62,8 +62,9 @@ function buildPdf(html, model, obj, options) {
 
 function uploadPdfObject(pdfObj, client) {
   return new Promise(function (resolve) {
+    var compilationId = pdfObj.model === 'compilation' ? pdfObj._id : pdfObj._compilation;
     var filename = pdfObj.model + '-' + pdfObj._id + '.pdf';
-    var path = 'compilations/' + pdfObj._compilation + '/' + filename;
+    var path = 'compilations/' + compilationId + '/' + filename;
     var fullPath = process.env.MANTA_APP_PUBLIC_PATH + '/' + path;
 
     var pdfStream = new _BufferStream2.default(pdfObj.buffer);

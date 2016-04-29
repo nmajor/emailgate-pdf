@@ -35,8 +35,9 @@ export function buildPdf(html, model, obj, options) {
 
 export function uploadPdfObject(pdfObj, client) {
   return new Promise((resolve) => {
+    const compilationId = pdfObj.model === 'compilation' ? pdfObj._id : pdfObj._compilation;
     const filename = `${pdfObj.model}-${pdfObj._id}.pdf`;
-    const path = `compilations/${pdfObj._compilation}/${filename}`;
+    const path = `compilations/${compilationId}/${filename}`;
     const fullPath = `${process.env.MANTA_APP_PUBLIC_PATH}/${path}`;
 
     const pdfStream = new BufferStream(pdfObj.buffer);

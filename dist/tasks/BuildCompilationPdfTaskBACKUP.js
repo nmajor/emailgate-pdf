@@ -18,6 +18,10 @@ var _pdfHelper = require('../lib/pdfHelper');
 
 var pdfHelper = _interopRequireWildcard(_pdfHelper);
 
+var _fs = require('fs');
+
+var _fs2 = _interopRequireDefault(_fs);
+
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -37,10 +41,13 @@ var BuildCompilationPdfTask = function () {
     this.getEmails = this.getEmails.bind(this);
     this.getPages = this.getPages.bind(this);
     this.downloadEmails = this.downloadEmails.bind(this);
-    this.addPageNumberToEmail = this.addPageNumberToEmail.bind(this);
     this.downloadPages = this.downloadPages.bind(this);
-    this.compilePdfDocuments = this.compilePdfDocuments.bind(this);
-    this.getCompilationPdfPages = this.getCompilationPdfPages.bind(this);
+    this.compilePagePdfs = this.downloadPages.bind(this);
+    this.compileEmailPdfs = this.downloadPages.bind(this);
+    this.getCompilationPdfPageCount = this.getCompilationPdfPageCount.bind(this);
+    this.addPageNumbersToEmailsPdf = this.addPageNumbersToEmailsPdf.bind(this);
+    this.getPdfBufferFromFile = this.getPdfBufferFromFile.bind(this);
+    this.combinePdfFiles = this.combinePdfFiles.bind(this);
   }
 
   _createClass(BuildCompilationPdfTask, [{
@@ -55,7 +62,7 @@ var BuildCompilationPdfTask = function () {
             (0, _logHelper.log)('error', 'An error happened while getting emails.', err.message);return;
           }
 
-          resolve(docs);
+          resolve(docs.slice(0, 5));
         });
       });
     }
@@ -78,8 +85,6 @@ var BuildCompilationPdfTask = function () {
   }, {
     key: 'downloadEmails',
     value: function downloadEmails(emails) {
-      var _this3 = this;
-
       var count = 1;
       var emailCount = emails.length;
 
@@ -88,32 +93,9 @@ var BuildCompilationPdfTask = function () {
           (0, _logHelper.log)('status', 'Downloaded pdf file ' + email.pdf.filename + ' ' + count + '/' + emailCount);
           count++;
           email.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
-          return _this3.addPageNumberToEmail(email);
+          return Promise.resolve(email);
         });
       }));
-    }
-  }, {
-    key: 'addPageNumberToEmail',
-    value: function addPageNumberToEmail(email) {
-      var _this4 = this;
-
-      return new Promise(function (resolve, reject) {
-        var oldPath = email.pdf.localPath;
-        var newPath = oldPath.replace(/\.pdf$/, '-paged.pdf');
-        var startingPage = _this4.props.emailPageMap[email._id];
-        var spawn = require('child_process').spawn;
-        var pspdftool = spawn('pspdftool', ['number(x=-1pt,y=-1pt,start=' + startingPage + ',size=10)', oldPath, newPath]);
-
-        pspdftool.on('close', function (code) {
-          if (code === 0) {
-            email.pdf.localPath = newPath; // eslint-disable-line no-param-reassign
-            (0, _logHelper.log)('status', 'Added page numbers to ' + email.pdf.filename);
-            resolve(email);
-          } else {
-            reject('pspdftool returned a bad exit code.');
-          }
-        });
-      });
     }
   }, {
     key: 'downloadPages',
@@ -132,34 +114,27 @@ var BuildCompilationPdfTask = function () {
       }));
     }
   }, {
-    key: 'compilePdfDocuments',
-    value: function compilePdfDocuments(emails, pages) {
-      var _this5 = this;
+    key: 'compilePagePdfs',
+    value: function compilePagePdfs(pages) {
+      var _this3 = this;
 
       return new Promise(function (resolve, reject) {
-        var sortedEmails = _lodash2.default.sortBy(emails, function (email) {
-          return _this5.props.emailPositionMap[email._id];
-        });
+        var filePath = '/tmp/compilation-' + _this3.props.compilationId + '-pages.pdf';
+        var writeStream = _fs2.default.createWriteStream(filePath);
         var sortedPages = _lodash2.default.sortBy(pages, function (page) {
-          return _this5.props.pagePositionMap[page._id];
+          return _this3.props.pagePositionMap[page._id];
         });
-
         var pageFileArguments = _lodash2.default.map(sortedPages, function (page) {
           return page.pdf.localPath;
         });
-        var emailFileArguments = _lodash2.default.map(sortedEmails, function (email) {
-          return email.pdf.localPath;
-        });
 
         var spawn = require('child_process').spawn;
-        var pdftk = spawn('pdftk', [].concat(_toConsumableArray(pageFileArguments), _toConsumableArray(emailFileArguments), ['cat', 'output', '-']));
+        var pdftk = spawn('pdftk', [].concat(_toConsumableArray(pageFileArguments), ['cat', 'output', '-']));
 
-        var pdfBuffers = [];
-        pdftk.stdout.on('data', function (chunk) {
-          pdfBuffers.push(chunk);
-        });
+        pdftk.stdout.pipe(writeStream);
+
         pdftk.stdout.on('end', function () {
-          resolve(Buffer.concat(pdfBuffers));
+          resolve(filePath);
         });
 
         pdftk.stderr.on('data', function (chunk) {
@@ -169,23 +144,107 @@ var BuildCompilationPdfTask = function () {
       });
     }
   }, {
-    key: 'getCompilationPdfPages',
-    value: function getCompilationPdfPages(buffer) {
-      var _this6 = this;
+    key: 'compileEmailPdfs',
+    value: function compileEmailPdfs(emails) {
+      var _this4 = this;
+
+      return new Promise(function (resolve, reject) {
+        var filePath = '/tmp/compilation-' + _this4.props.compilationId + '-emails.pdf';
+        var writeStream = _fs2.default.createWriteStream(filePath);
+        var sortedEmails = _lodash2.default.sortBy(emails, function (email) {
+          return _this4.props.emailPositionMap[email._id];
+        });
+        var emailFileArguments = _lodash2.default.map(sortedEmails, function (email) {
+          return email.pdf.localPath;
+        });
+
+        var spawn = require('child_process').spawn;
+        var pdftk = spawn('pdftk', [].concat(_toConsumableArray(emailFileArguments), ['cat', 'output', '-']));
+
+        pdftk.stdout.pipe(writeStream);
+
+        pdftk.stdout.on('end', function () {
+          resolve(filePath);
+        });
+
+        pdftk.stderr.on('data', function (chunk) {
+          (0, _logHelper.log)('error', 'An error happened with the pdftk command.', chunk.toString('utf8'));
+          reject('An error happened with the pdftk command.');
+        });
+      });
+    }
+  }, {
+    key: 'getCompilationPdfPageCount',
+    value: function getCompilationPdfPageCount(buffer) {
+      var _this5 = this;
 
       return pdfHelper.getPdfPages(buffer).then(function (pageCount) {
         return Promise.resolve({
           model: 'compilation',
-          _id: _this6.props.compilationId,
+          _id: _this5.props.compilationId,
           pageCount: pageCount,
           buffer: buffer
         });
       });
     }
   }, {
+    key: 'addPageNumbersToEmailsPdf',
+    value: function addPageNumbersToEmailsPdf(pdfPath) {
+      return new Promise(function (resolve, reject) {
+        var newFilePath = 'paged-' + pdfPath;
+        var spawn = require('child_process').spawn;
+        var pspdftool = spawn('pspdftool', ['number(x=-1pt,y=-1pt,start=9,size=10)', pdfPath, newFilePath]);
+
+        pspdftool.on('close', function (code) {
+          if (code === 0) {
+            resolve(newFilePath);
+          } else {
+            reject('pspdftool returned a bad exit code.');
+          }
+        });
+      });
+    }
+  }, {
+    key: 'getPdfBufferFromFile',
+    value: function getPdfBufferFromFile(pdfPath) {
+      return new Promise(function (resolve, reject) {
+        _fs2.default.readFile(pdfPath, function (err, data) {
+          if (err) {
+            (0, _logHelper.log)('error', 'An error happened while converting the pdf file to buffer.', err.message);reject();return;
+          }
+
+          resolve(data);
+        });
+      });
+    }
+  }, {
+    key: 'combinePdfFiles',
+    value: function combinePdfFiles(filePath1, filePath2) {
+      return new Promise(function (resolve, reject) {
+        var spawn = require('child_process').spawn;
+        var pdftk = spawn('pdftk', [filePath1, filePath2, 'cat', 'output', '-']);
+
+        var pdfBuffers = [];
+        pdftk.stdout.on('data', function (chunk) {
+          pdfBuffers.push(chunk);
+        });
+        pdftk.stdout.on('end', function () {
+          resolve(Buffer.concat(pdfBuffers));
+        });
+
+        var writeStream = _fs2.default.createWriteStream('/var/host/tmp/demo.pdf');
+        pdftk.stdout.pipe(writeStream);
+
+        pdftk.stderr.on('data', function (chunk) {
+          (0, _logHelper.log)('error', 'An error happened with the pdftk command combining files.', chunk.toString('utf8'));
+          reject('An error happened with the pdftk command.');
+        });
+      });
+    }
+  }, {
     key: 'run',
     value: function run() {
-      var _this7 = this;
+      var _this6 = this;
 
       return Promise.all([this.getEmails(), this.getPages()]).then(function (results) {
         var _results = _slicedToArray(results, 2);
@@ -195,7 +254,7 @@ var BuildCompilationPdfTask = function () {
 
         (0, _logHelper.log)('status', 'Found compilation emails(' + emails.length + ') and pages(' + pages.length + ').');
 
-        return Promise.all([_this7.downloadEmails(emails), _this7.downloadPages(pages)]);
+        return Promise.all([_this6.downloadEmails(emails), _this6.downloadPages(pages)]);
       }).then(function (results) {
         var _results2 = _slicedToArray(results, 2);
 
@@ -204,14 +263,40 @@ var BuildCompilationPdfTask = function () {
 
         (0, _logHelper.log)('status', 'Downloaded email and page pdf files.');
 
-        return _this7.compilePdfDocuments(emails, pages);
-      }).then(this.getCompilationPdfPages).then(function (pdfObj) {
-        (0, _logHelper.log)('status', 'Compiled the pdfs into one ' + pdfObj.pageCount + ' page file.');
-        return pdfHelper.uploadPdfObject(pdfObj, _this7.config.mantaClient);
-      }).then(function (result) {
-        (0, _logHelper.log)('compilation-pdf', 'Added compilation pdf ' + result._id, result);
-        return Promise.resolve();
+        return Promise.all([_this6.compileEmailPdfs(emails), _this6.compilePagePdfs(pages)]);
+      }).then(function (results) {
+        var _results3 = _slicedToArray(results, 2);
+
+        var emailsPdfPath = _results3[0];
+        var pagesPdfPath = _results3[1];
+
+        (0, _logHelper.log)('status', 'Compiled email pdfs and pages pdfs.');
+        console.log('blah 1');
+        console.log(emailsPdfPath);
+        console.log('blah 2');
+        console.log(pagesPdfPath);
+
+        return Promise.all([_this6.addPageNumbersToEmailsPdf(emailsPdfPath), Promise.resolve(pagesPdfPath)]);
+      }).then(function (results) {
+        var _results4 = _slicedToArray(results, 2);
+
+        var emailsPdfPath = _results4[0];
+        var pagesPdfPath = _results4[1];
+
+
+        return _this6.combinePdfFiles(emailsPdfPath, pagesPdfPath);
+      }).catch(function (err) {
+        console.log(err.message);
       });
+      // .then(this.getCompilationPdfPages)
+      // .then((pdfObj) => {
+      //   log('status', `Compiled the pdfs into one ${pdfObj.pageCount} page file.`);
+      //   return pdfHelper.uploadPdfObject(pdfObj, this.config.mantaClient);
+      // })
+      // .then((result) => {
+      //   log('compilation-pdf', `Added compilation pdf ${result._id}`, result);
+      //   return Promise.resolve();
+      // });
     }
   }]);
 
