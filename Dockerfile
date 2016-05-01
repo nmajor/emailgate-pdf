@@ -6,7 +6,7 @@ RUN apt-get install -y bzip2 libfontconfig pdftk
 
 # Download and install phantomjs
 WORKDIR /tmp
-RUN wget https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2
+RUN wget https://us-east.manta.joyent.com//nmajor/public/emailgate/container/phantomjs-2.1.1-linux-x86_64.tar.bz2
 RUN tar xvjf phantomjs-2.1.1-linux-x86_64.tar.bz2
 RUN mv phantomjs-2.1.1-linux-x86_64/bin/phantomjs /bin/
 
