@@ -4,8 +4,6 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
-
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _lodash = require('lodash');
@@ -33,6 +31,10 @@ var BuildCompilationPdfTask = function () {
     this.db = options.db;
     this.props = options.props;
     this.config = options.config;
+    this.state = {
+      emails: [],
+      pages: []
+    };
 
     this.getEmails = this.getEmails.bind(this);
     this.getPages = this.getPages.bind(this);
@@ -55,7 +57,8 @@ var BuildCompilationPdfTask = function () {
             (0, _logHelper.log)('error', 'An error happened while getting emails.', err.message);return;
           }
 
-          resolve(docs);
+          _this.state.emails = docs;
+          resolve();
         });
       });
     }
@@ -71,26 +74,32 @@ var BuildCompilationPdfTask = function () {
             (0, _logHelper.log)('error', 'An error happened while getting pages.', err.message);return;
           }
 
+          _this2.state.pages = docs;
           resolve(docs);
         });
       });
     }
   }, {
     key: 'downloadEmails',
-    value: function downloadEmails(emails) {
+    value: function downloadEmails() {
       var _this3 = this;
 
       var count = 1;
-      var emailCount = emails.length;
+      var emailCount = this.state.emails.length;
+      var p = Promise.resolve();
 
-      return Promise.all(emails.map(function (email) {
-        return pdfHelper.downloadPdf(email.pdf).then(function (localPath) {
-          (0, _logHelper.log)('status', 'Downloaded pdf file ' + email.pdf.filename + ' ' + count + '/' + emailCount);
-          count++;
-          email.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
-          return _this3.addPageNumberToEmail(email);
+      _lodash2.default.forEach(this.state.emails, function (email) {
+        p = p.then(function () {
+          return pdfHelper.downloadPdf(email.pdf).then(function (localPath) {
+            (0, _logHelper.log)('status', 'Downloaded pdf file ' + email.pdf.filename + ' ' + count + '/' + emailCount);
+            count++;
+            email.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
+            return _this3.addPageNumberToEmail(email);
+          });
         });
-      }));
+      });
+
+      return p;
     }
   }, {
     key: 'addPageNumberToEmail',
@@ -117,38 +126,46 @@ var BuildCompilationPdfTask = function () {
     }
   }, {
     key: 'downloadPages',
-    value: function downloadPages(pages) {
+    value: function downloadPages() {
       var count = 1;
-      var pageCount = pages.length;
+      var pageCount = this.state.pages.length;
+      var p = Promise.resolve();
 
-      return Promise.all(pages.map(function (page) {
-        return pdfHelper.downloadPdf(page.pdf).then(function (localPath) {
-          (0, _logHelper.log)('status', 'Downloaded pdf file ' + page.pdf.filename + ' ' + count + '/' + pageCount);
-          count++;
-
-          page.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
-          return Promise.resolve(page);
+      _lodash2.default.forEach(this.state.pages, function (page) {
+        p = p.then(function () {
+          return pdfHelper.downloadPdf(page.pdf).then(function (localPath) {
+            (0, _logHelper.log)('status', 'Downloaded pdf file ' + page.pdf.filename + ' ' + count + '/' + pageCount);
+            count++;
+            page.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
+            return Promise.resolve(page);
+          });
         });
-      }));
+      });
+
+      return p;
     }
   }, {
     key: 'compilePdfDocuments',
-    value: function compilePdfDocuments(emails, pages) {
+    value: function compilePdfDocuments() {
       var _this5 = this;
 
       return new Promise(function (resolve, reject) {
-        var sortedEmails = _lodash2.default.sortBy(emails, function (email) {
+        var sortedEmails = _lodash2.default.sortBy(_this5.state.emails, function (email) {
           return _this5.props.emailPositionMap[email._id];
         });
-        var sortedPages = _lodash2.default.sortBy(pages, function (page) {
+        var sortedPages = _lodash2.default.sortBy(_this5.state.pages, function (page) {
           return _this5.props.pagePositionMap[page._id];
         });
 
         var pageFileArguments = _lodash2.default.map(sortedPages, function (page) {
-          return page.pdf.localPath;
+          if (!page.pdf) {
+            console.log('blah');console.log(page);
+          }return page.pdf.localPath;
         });
         var emailFileArguments = _lodash2.default.map(sortedEmails, function (email) {
-          return email.pdf.localPath;
+          if (!email.pdf) {
+            console.log('blah');console.log(email);
+          }return email.pdf.localPath;
         });
 
         var spawn = require('child_process').spawn;
@@ -187,24 +204,14 @@ var BuildCompilationPdfTask = function () {
     value: function run() {
       var _this7 = this;
 
-      return Promise.all([this.getEmails(), this.getPages()]).then(function (results) {
-        var _results = _slicedToArray(results, 2);
+      return Promise.all([this.getEmails(), this.getPages()]).then(function () {
+        (0, _logHelper.log)('status', 'Found compilation emails(' + _this7.state.emails.length + ') and pages(' + _this7.state.pages.length + ').');
 
-        var emails = _results[0];
-        var pages = _results[1];
-
-        (0, _logHelper.log)('status', 'Found compilation emails(' + emails.length + ') and pages(' + pages.length + ').');
-
-        return Promise.all([_this7.downloadEmails(emails), _this7.downloadPages(pages)]);
-      }).then(function (results) {
-        var _results2 = _slicedToArray(results, 2);
-
-        var emails = _results2[0];
-        var pages = _results2[1];
-
+        return Promise.all([_this7.downloadEmails(), _this7.downloadPages()]);
+      }).then(function () {
         (0, _logHelper.log)('status', 'Downloaded email and page pdf files.');
 
-        return _this7.compilePdfDocuments(emails, pages);
+        return _this7.compilePdfDocuments();
       }).then(this.getCompilationPdfPages).then(function (pdfObj) {
         (0, _logHelper.log)('status', 'Compiled the pdfs into one ' + pdfObj.pageCount + ' page file.');
         return pdfHelper.uploadPdfObject(pdfObj, _this7.config.mantaClient);

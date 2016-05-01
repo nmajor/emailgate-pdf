@@ -7,6 +7,10 @@ class BuildCompilationPdfTask {
     this.db = options.db;
     this.props = options.props;
     this.config = options.config;
+    this.state = {
+      emails: [],
+      pages: [],
+    };
 
     this.getEmails = this.getEmails.bind(this);
     this.getPages = this.getPages.bind(this);
@@ -24,7 +28,8 @@ class BuildCompilationPdfTask {
       .toArray((err, docs) => {
         if (err) { log('error', 'An error happened while getting emails.', err.message); return; }
 
-        resolve(docs);
+        this.state.emails = docs;
+        resolve();
       });
     });
   }
@@ -36,24 +41,30 @@ class BuildCompilationPdfTask {
       .toArray((err, docs) => {
         if (err) { log('error', 'An error happened while getting pages.', err.message); return; }
 
+        this.state.pages = docs;
         resolve(docs);
       });
     });
   }
 
-  downloadEmails(emails) {
+  downloadEmails() {
     let count = 1;
-    const emailCount = emails.length;
+    const emailCount = this.state.emails.length;
+    let p = Promise.resolve();
 
-    return Promise.all(emails.map((email) => {
-      return pdfHelper.downloadPdf(email.pdf)
-      .then((localPath) => {
-        log('status', `Downloaded pdf file ${email.pdf.filename} ${count}/${emailCount}`);
-        count++;
-        email.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
-        return this.addPageNumberToEmail(email);
+    _.forEach(this.state.emails, (email) => {
+      p = p.then(() => {
+        return pdfHelper.downloadPdf(email.pdf)
+        .then((localPath) => {
+          log('status', `Downloaded pdf file ${email.pdf.filename} ${count}/${emailCount}`);
+          count++;
+          email.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
+          return this.addPageNumberToEmail(email);
+        });
       });
-    }));
+    });
+
+    return p;
   }
 
   addPageNumberToEmail(email) {
@@ -80,29 +91,33 @@ class BuildCompilationPdfTask {
     });
   }
 
-  downloadPages(pages) {
+  downloadPages() {
     let count = 1;
-    const pageCount = pages.length;
+    const pageCount = this.state.pages.length;
+    let p = Promise.resolve();
 
-    return Promise.all(pages.map((page) => {
-      return pdfHelper.downloadPdf(page.pdf)
-      .then((localPath) => {
-        log('status', `Downloaded pdf file ${page.pdf.filename} ${count}/${pageCount}`);
-        count++;
-
-        page.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
-        return Promise.resolve(page);
+    _.forEach(this.state.pages, (page) => {
+      p = p.then(() => {
+        return pdfHelper.downloadPdf(page.pdf)
+        .then((localPath) => {
+          log('status', `Downloaded pdf file ${page.pdf.filename} ${count}/${pageCount}`);
+          count++;
+          page.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
+          return Promise.resolve(page);
+        });
       });
-    }));
+    });
+
+    return p;
   }
 
-  compilePdfDocuments(emails, pages) {
+  compilePdfDocuments() {
     return new Promise((resolve, reject) => {
-      const sortedEmails = _.sortBy(emails, (email) => { return this.props.emailPositionMap[email._id]; });
-      const sortedPages = _.sortBy(pages, (page) => { return this.props.pagePositionMap[page._id]; });
+      const sortedEmails = _.sortBy(this.state.emails, (email) => { return this.props.emailPositionMap[email._id]; });
+      const sortedPages = _.sortBy(this.state.pages, (page) => { return this.props.pagePositionMap[page._id]; });
 
-      const pageFileArguments = _.map(sortedPages, (page) => { return page.pdf.localPath; });
-      const emailFileArguments = _.map(sortedEmails, (email) => { return email.pdf.localPath; });
+      const pageFileArguments = _.map(sortedPages, (page) => { if (!page.pdf) { console.log('blah'); console.log(page); } return page.pdf.localPath; });
+      const emailFileArguments = _.map(sortedEmails, (email) => { if (!email.pdf) { console.log('blah'); console.log(email); } return email.pdf.localPath; });
 
       const spawn = require('child_process').spawn;
       const pdftk = spawn('pdftk', [
@@ -143,20 +158,18 @@ class BuildCompilationPdfTask {
       this.getEmails(),
       this.getPages(),
     ])
-    .then((results) => {
-      const [emails, pages] = results;
-      log('status', `Found compilation emails(${emails.length}) and pages(${pages.length}).`);
+    .then(() => {
+      log('status', `Found compilation emails(${this.state.emails.length}) and pages(${this.state.pages.length}).`);
 
       return Promise.all([
-        this.downloadEmails(emails),
-        this.downloadPages(pages),
+        this.downloadEmails(),
+        this.downloadPages(),
       ]);
     })
-    .then((results) => {
-      const [emails, pages] = results;
+    .then(() => {
       log('status', 'Downloaded email and page pdf files.');
 
-      return this.compilePdfDocuments(emails, pages);
+      return this.compilePdfDocuments();
     })
     .then(this.getCompilationPdfPages)
     .then((pdfObj) => {
