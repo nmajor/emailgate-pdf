@@ -12,6 +12,8 @@ import BuildPagePdfsTask from './tasks/BuildPagePdfsTask';
 import BuildCompilationPdfTask from './tasks/BuildCompilationPdfTask';
 
 
+log('error', 'Logging Variables', process.env);
+
 // Define variables
 // ****************
 const config = {

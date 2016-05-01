@@ -31,6 +31,8 @@ require('babel-register');
 require('babel-polyfill');
 require('dotenv').config({ silent: true });
 
+(0, _logHelper.log)('error', 'Logging Variables', process.env);
+
 // Define variables
 // ****************
 var config = {

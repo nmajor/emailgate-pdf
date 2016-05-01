@@ -20,7 +20,10 @@ WORKDIR $HOME
 COPY package.json ./
 
 RUN npm install
+RUN npm install -g gulp
 
 COPY . ./
+
+RUN gulp babel
 
 CMD ["node", "dist/index.js"]
