@@ -45,11 +45,12 @@ const config = {
 
 function parseTask(task) {
   const taskString = new Buffer(task, 'base64').toString('utf8');
-  log('status', 'Found worker task.');
   return JSON.parse(taskString);
 }
 
 function taskFactory(task, db) {
+  log('status', `Received task ${task.name}.`);
+
   switch (task.name) {
     case 'build-email-pdfs' :
       return new BuildEmailPdfsTask({ db, props: task.props, config });
@@ -74,7 +75,6 @@ if (!process.env.TASK) {
 }
 
 const task = parseTask(process.env.TASK);
-
 
 dbHelper.connectToDatabase(config.mongoUrl)
 .then((db) => {

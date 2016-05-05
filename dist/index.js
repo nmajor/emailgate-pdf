@@ -65,11 +65,12 @@ var config = {
 
 function parseTask(task) {
   var taskString = new Buffer(task, 'base64').toString('utf8');
-  (0, _logHelper.log)('status', 'Found worker task.');
   return JSON.parse(taskString);
 }
 
 function taskFactory(task, db) {
+  (0, _logHelper.log)('status', 'Received task ' + task.name + '.');
+
   switch (task.name) {
     case 'build-email-pdfs':
       return new _BuildEmailPdfsTask2.default({ db: db, props: task.props, config: config });

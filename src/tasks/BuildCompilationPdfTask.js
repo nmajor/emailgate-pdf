@@ -179,6 +179,9 @@ class BuildCompilationPdfTask {
     .then((result) => {
       log('compilation-pdf', `Added compilation pdf ${result._id}`, result);
       return Promise.resolve();
+    })
+    .catch((err) => {
+      log('error', err.message, err);
     });
   }
 }

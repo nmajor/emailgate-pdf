@@ -73,6 +73,11 @@ export function uploadPdfObject(pdfObj, client) {
 
 export function downloadPdf(pdfObj) {
   return new Promise((resolve, reject) => {
+    if (!pdfObj || !pdfObj.url) {
+      log('error', 'Trying to download pdf but pdf object is not complete.');
+      reject();
+    }
+
     const dir = '/tmp/compilation';
 
     if (!fs.existsSync(dir)) {

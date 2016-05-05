@@ -218,6 +218,8 @@ var BuildCompilationPdfTask = function () {
       }).then(function (result) {
         (0, _logHelper.log)('compilation-pdf', 'Added compilation pdf ' + result._id, result);
         return Promise.resolve();
+      }).catch(function (err) {
+        (0, _logHelper.log)('error', err.message, err);
       });
     }
   }]);

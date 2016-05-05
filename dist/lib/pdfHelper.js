@@ -105,6 +105,11 @@ function uploadPdfObject(pdfObj, client) {
 
 function downloadPdf(pdfObj) {
   return new Promise(function (resolve, reject) {
+    if (!pdfObj || !pdfObj.url) {
+      (0, _logHelper.log)('error', 'Trying to download pdf but pdf object is not complete.');
+      reject();
+    }
+
     var dir = '/tmp/compilation';
 
     if (!_fs2.default.existsSync(dir)) {
