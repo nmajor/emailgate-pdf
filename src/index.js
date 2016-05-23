@@ -18,12 +18,6 @@ const config = {
   emailOptions: {
     height: '10.5in',
     width: '8in',
-    border: {
-      top: '0.6in',
-      right: '0.6in',
-      bottom: '1.2in',
-      left: '0.6in',
-    },
     timeout: 120000,
   },
   pageOptions: {
