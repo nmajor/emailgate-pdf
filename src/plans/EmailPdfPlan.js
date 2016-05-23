@@ -5,7 +5,6 @@ import * as pdfHelper from '../lib/pdfHelper';
 class EmailPdfPlan {
   constructor(options) {
     this.task = options.task;
-    this.props = options.task.props;
 
     this.getEmail = this.getEmail.bind(this);
     this.buildPdf = this.buildPdf.bind(this);
@@ -21,9 +20,9 @@ class EmailPdfPlan {
 
       connection((db) => {
         const collection = db.collection('emails');
-        collection.findOne({ _id: this.props.emailId }, (err, doc) => {
+        collection.findOne({ _id: this.task.emailId }, (err, doc) => {
           if (err) { this.log('error', 'An error happened while finding email in DB.', err.message); return; }
-          if (!doc) { this.log('error', `Could not find email with id: ${this.props.emailId}.`, err.message); return; }
+          if (!doc) { this.log('error', `Could not find email with id: ${this.task.emailId}.`, err.message); return; }
 
           this.log('status', 'Found Email');
           this.email = doc;
@@ -50,7 +49,7 @@ class EmailPdfPlan {
 
       connection((db) => {
         const collection = db.collection('emails');
-        collection.update({ _id: this.props.emailId }, { $set: { pdf: pdfResults } }, (err, result) => {
+        collection.update({ _id: this.task.emailId }, { $set: { pdf: pdfResults } }, (err, result) => {
           if (err) {
             this.log('error', 'Error happened when updating pdf for email', err);
             resolve();
@@ -85,10 +84,7 @@ class EmailPdfPlan {
     .then((pdfObj) => {
       return this.uploadPdf(pdfObj);
     })
-    .then(this.savePdfResults)
-    .catch((err) => {
-      this.log('error', 'Error happened in EmailPdfPlan.', err);
-    });
+    .then(this.savePdfResults);
   }
 }
 

@@ -4,9 +4,9 @@ var _task = require('./task');
 
 var _task2 = _interopRequireDefault(_task);
 
-var _InfiniteLoop = require('./lib/InfiniteLoop');
+var _queue = require('./queue');
 
-var _InfiniteLoop2 = _interopRequireDefault(_InfiniteLoop);
+var _queue2 = _interopRequireDefault(_queue);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -14,13 +14,11 @@ require('babel-register');
 require('babel-polyfill');
 require('dotenv').config({ silent: true });
 
-var tasks = [];
-var checkForNewTasks = new _InfiniteLoop2.default();
-checkForNewTasks.setInterval(5000);
-checkForNewTasks.add(function () {
-  _task2.default.findQueuedTasks().then(function (foundTasks) {
-    return Promise.all(tasks.map(function (task) {
-      return task.start();
-    }));
+_queue2.default.process('pdf', 5, function (job, done) {
+  var task = new _task2.default(job);
+  task.start().then(function () {
+    done();
+  }).catch(function (err) {
+    done(err);
   });
 });

@@ -29,7 +29,6 @@ var EmailPdfPlan = function () {
     _classCallCheck(this, EmailPdfPlan);
 
     this.task = options.task;
-    this.props = options.task.props;
 
     this.getEmail = this.getEmail.bind(this);
     this.buildPdf = this.buildPdf.bind(this);
@@ -49,12 +48,12 @@ var EmailPdfPlan = function () {
 
         (0, _connection2.default)(function (db) {
           var collection = db.collection('emails');
-          collection.findOne({ _id: _this.props.emailId }, function (err, doc) {
+          collection.findOne({ _id: _this.task.emailId }, function (err, doc) {
             if (err) {
               _this.log('error', 'An error happened while finding email in DB.', err.message);return;
             }
             if (!doc) {
-              _this.log('error', 'Could not find email with id: ' + _this.props.emailId + '.', err.message);return;
+              _this.log('error', 'Could not find email with id: ' + _this.task.emailId + '.', err.message);return;
             }
 
             _this.log('status', 'Found Email');
@@ -87,7 +86,7 @@ var EmailPdfPlan = function () {
 
         (0, _connection2.default)(function (db) {
           var collection = db.collection('emails');
-          collection.update({ _id: _this2.props.emailId }, { $set: { pdf: pdfResults } }, function (err, result) {
+          collection.update({ _id: _this2.task.emailId }, { $set: { pdf: pdfResults } }, function (err, result) {
             if (err) {
               _this2.log('error', 'Error happened when updating pdf for email', err);
               resolve();
@@ -123,9 +122,7 @@ var EmailPdfPlan = function () {
         return _this3.buildPdf();
       }).then(function (pdfObj) {
         return _this3.uploadPdf(pdfObj);
-      }).then(this.savePdfResults).catch(function (err) {
-        _this3.log('error', 'Error happened in EmailPdfPlan.', err);
-      });
+      }).then(this.savePdfResults);
     }
   }]);
 
