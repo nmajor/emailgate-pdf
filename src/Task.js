@@ -21,23 +21,23 @@ class Task {
     this.Plan = planFactory(this);
   }
 
-  static findNextTasks() {
+  static getMoreTasks() {
     return new Promise((resolve) => {
       connection((db) => {
         const collection = db.collection('tasks');
-        // const query = { startedAt: null, finishedAt: null };
-        const query = {};
+        const query = { finishedAt: null };
 
         collection.find(query)
         .sort({ priority: -1, createdAt: -1 })
-        .limit(5)
         .toArray((err, docs) => {
-          // if (err) { log('error', 'An error happened while getting emails.', err.message); return; }
-
           resolve(docs.map((doc) => { return new Task(doc); }));
         });
       });
     });
+  }
+
+  isRunning() {
+    return (this.startedAt && !this.finishedAt);
   }
 
   addLog(type, message, payload) {
@@ -57,27 +57,38 @@ class Task {
     });
   }
 
-  start() {
+  update(attr, val) {
     return new Promise((resolve) => {
       connection((db) => {
         const collection = db.collection('tasks');
 
-        collection.update({ _id: this._id }, { $set: { startedAt: new Date() } }, (err, result) => {
+        collection.update({ _id: this._id }, { $set: { attr: val } }, (err, result) => {
           if (err) {
-            this.addLog('error', 'Error happened when updating startedAt', err);
+            this.addLog('error', `Error happened when updating ${attr}`, err);
             resolve();
             return;
           }
 
           if (result.result.n !== 1) {
-            this.addLog('error', 'Error happened when updating startedAt. Update query didnt seem to update anythig.', result);
+            this.addLog('error', `Error happened when updating ${attr}. Update query didnt seem to update anythig.`, result);
             resolve();
             return;
           }
 
-          resolve(new this.Plan({ task: this }).start());
+          this[attr] = val;
+          resolve(this);
         });
       });
+    });
+  }
+
+  start() {
+    return this.update('startedAt', new Date())
+    .then(() => {
+      return new this.Plan({ task: this }).start();
+    })
+    .then(() => {
+      return this.update('finishedAt', new Date());
     });
   }
 }

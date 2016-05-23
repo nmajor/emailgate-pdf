@@ -51,6 +51,11 @@ var Task = function () {
   }
 
   _createClass(Task, [{
+    key: 'isRunning',
+    value: function isRunning() {
+      return this.startedAt && !this.finishedAt;
+    }
+  }, {
     key: 'addLog',
     value: function addLog(type, message, payload) {
       var _this2 = this;
@@ -73,44 +78,53 @@ var Task = function () {
       });
     }
   }, {
-    key: 'start',
-    value: function start() {
+    key: 'update',
+    value: function update(attr, val) {
       var _this3 = this;
 
       return new Promise(function (resolve) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('tasks');
 
-          collection.update({ _id: _this3._id }, { $set: { startedAt: new Date() } }, function (err, result) {
+          collection.update({ _id: _this3._id }, { $set: { attr: val } }, function (err, result) {
             if (err) {
-              _this3.addLog('error', 'Error happened when updating startedAt', err);
+              _this3.addLog('error', 'Error happened when updating ' + attr, err);
               resolve();
               return;
             }
 
             if (result.result.n !== 1) {
-              _this3.addLog('error', 'Error happened when updating startedAt. Update query didnt seem to update anythig.', result);
+              _this3.addLog('error', 'Error happened when updating ' + attr + '. Update query didnt seem to update anythig.', result);
               resolve();
               return;
             }
 
-            resolve(new _this3.Plan({ task: _this3 }).start());
+            _this3[attr] = val;
+            resolve(_this3);
           });
         });
       });
     }
+  }, {
+    key: 'start',
+    value: function start() {
+      var _this4 = this;
+
+      return this.update('startedAt', new Date()).then(function () {
+        return new _this4.Plan({ task: _this4 }).start();
+      }).then(function () {
+        return _this4.update('finishedAt', new Date());
+      });
+    }
   }], [{
-    key: 'findNextTasks',
-    value: function findNextTasks() {
+    key: 'getMoreTasks',
+    value: function getMoreTasks() {
       return new Promise(function (resolve) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('tasks');
-          // const query = { startedAt: null, finishedAt: null };
-          var query = {};
+          var query = { finishedAt: null };
 
-          collection.find(query).sort({ priority: -1, createdAt: -1 }).limit(5).toArray(function (err, docs) {
-            // if (err) { log('error', 'An error happened while getting emails.', err.message); return; }
-
+          collection.find(query).sort({ priority: -1, createdAt: -1 }).toArray(function (err, docs) {
             resolve(docs.map(function (doc) {
               return new Task(doc);
             }));
