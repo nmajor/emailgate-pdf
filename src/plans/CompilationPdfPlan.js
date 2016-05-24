@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import * as pdfHelper from '../lib/pdfHelper';
+import * as fileHelper from '../lib/fileHelper';
 import connection from '../connection';
 import assert from 'assert';
 
@@ -7,6 +8,7 @@ class CompilationPdfPlan {
   constructor(options) {
     this.task = options.task;
 
+    this.trash = [];
     // stepsTotal should be the number of times this.step() is called within this.start()
     this.stepsTotal = 8;
     this.stepsCompleted = 0;
@@ -22,6 +24,7 @@ class CompilationPdfPlan {
     this.getCompilationPdfPages = this.getCompilationPdfPages.bind(this);
     this.savePdfResults = this.savePdfResults.bind(this);
     this.step = this.step.bind(this);
+    this.cleanup = this.cleanup.bind(this);
     this.start = this.start.bind(this);
   }
 
@@ -75,14 +78,13 @@ class CompilationPdfPlan {
   }
 
   downloadEmails() {
-    let count = 1;
     let p = Promise.resolve();
 
     _.forEach(this.emails, (email) => {
       p = p.then(() => {
         return this.step(pdfHelper.downloadPdf(email.pdf)
         .then((localPath) => {
-          count++;
+          this.trash.push(localPath);
           email.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
           return this.addPageNumberToEmail(email);
         }));
@@ -106,6 +108,7 @@ class CompilationPdfPlan {
 
       pspdftool.on('close', (code) => {
         if (code === 0) {
+          this.trash.push(newPath);
           email.pdf.localPath = newPath; // eslint-disable-line no-param-reassign
           resolve(email);
         } else {
@@ -116,14 +119,13 @@ class CompilationPdfPlan {
   }
 
   downloadPages() {
-    let count = 1;
     let p = Promise.resolve();
 
     _.forEach(this.pages, (page) => {
       p = p.then(() => {
         return this.step(pdfHelper.downloadPdf(page.pdf)
         .then((localPath) => {
-          count++;
+          this.trash.push(localPath);
           page.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
           return Promise.resolve(page);
         }));
@@ -197,6 +199,10 @@ class CompilationPdfPlan {
     });
   }
 
+  cleanup() {
+    return fileHelper.deleteFiles(this.trash);
+  }
+
   start() {
     return Promise.all([
       this.step(this.getEmails()),
@@ -219,6 +225,9 @@ class CompilationPdfPlan {
     })
     .then((results) => {
       return this.step(this.savePdfResults(results));
+    })
+    .then(() => {
+      return this.step(this.cleanup());
     });
   }
 }

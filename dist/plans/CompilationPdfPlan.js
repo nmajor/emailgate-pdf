@@ -14,6 +14,10 @@ var _pdfHelper = require('../lib/pdfHelper');
 
 var pdfHelper = _interopRequireWildcard(_pdfHelper);
 
+var _fileHelper = require('../lib/fileHelper');
+
+var fileHelper = _interopRequireWildcard(_fileHelper);
+
 var _connection = require('../connection');
 
 var _connection2 = _interopRequireDefault(_connection);
@@ -36,6 +40,7 @@ var CompilationPdfPlan = function () {
 
     this.task = options.task;
 
+    this.trash = [];
     // stepsTotal should be the number of times this.step() is called within this.start()
     this.stepsTotal = 8;
     this.stepsCompleted = 0;
@@ -51,6 +56,7 @@ var CompilationPdfPlan = function () {
     this.getCompilationPdfPages = this.getCompilationPdfPages.bind(this);
     this.savePdfResults = this.savePdfResults.bind(this);
     this.step = this.step.bind(this);
+    this.cleanup = this.cleanup.bind(this);
     this.start = this.start.bind(this);
   }
 
@@ -114,13 +120,12 @@ var CompilationPdfPlan = function () {
     value: function downloadEmails() {
       var _this3 = this;
 
-      var count = 1;
       var p = Promise.resolve();
 
       _lodash2.default.forEach(this.emails, function (email) {
         p = p.then(function () {
           return _this3.step(pdfHelper.downloadPdf(email.pdf).then(function (localPath) {
-            count++;
+            _this3.trash.push(localPath);
             email.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
             return _this3.addPageNumberToEmail(email);
           }));
@@ -143,6 +148,7 @@ var CompilationPdfPlan = function () {
 
         pspdftool.on('close', function (code) {
           if (code === 0) {
+            _this4.trash.push(newPath);
             email.pdf.localPath = newPath; // eslint-disable-line no-param-reassign
             resolve(email);
           } else {
@@ -156,13 +162,12 @@ var CompilationPdfPlan = function () {
     value: function downloadPages() {
       var _this5 = this;
 
-      var count = 1;
       var p = Promise.resolve();
 
       _lodash2.default.forEach(this.pages, function (page) {
         p = p.then(function () {
           return _this5.step(pdfHelper.downloadPdf(page.pdf).then(function (localPath) {
-            count++;
+            _this5.trash.push(localPath);
             page.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
             return Promise.resolve(page);
           }));
@@ -251,6 +256,11 @@ var CompilationPdfPlan = function () {
       });
     }
   }, {
+    key: 'cleanup',
+    value: function cleanup() {
+      return fileHelper.deleteFiles(this.trash);
+    }
+  }, {
     key: 'start',
     value: function start() {
       var _this10 = this;
@@ -265,6 +275,8 @@ var CompilationPdfPlan = function () {
         return _this10.step(pdfHelper.uploadPdfObject(pdfObj));
       }).then(function (results) {
         return _this10.step(_this10.savePdfResults(results));
+      }).then(function () {
+        return _this10.step(_this10.cleanup());
       });
     }
   }]);

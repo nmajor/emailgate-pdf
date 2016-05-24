@@ -34,7 +34,6 @@ var EmailPdfPlan = function () {
 
     this.task = options.task;
 
-    this.fileCleanup = [];
     // stepsTotal should be the number of times this.step() is called within this.start()
     this.stepsTotal = 4;
     this.stepsCompleted = 0;
