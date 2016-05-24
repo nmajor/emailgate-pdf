@@ -2,6 +2,7 @@ import pdf from 'html-pdf';
 import pdfjs from 'pdfjs-dist';
 import BufferStream from './BufferStream';
 import config from '../config';
+import assert from 'assert';
 
 import https from 'https';
 import fs from 'fs';
@@ -24,7 +25,7 @@ export function buildPdf(html, model, obj, options, log) {
     log('status', 'Building pdf.');
 
     return pdf.create(html, options).toBuffer((err, buffer) => {
-      if (err) { log('error', `An error happened while generating a ${model} PDF.`, err.message); return; }
+      assert.equal(err, null);
       log('status', 'Finished building pdf.');
 
       getPdfPages(buffer, log)
@@ -41,26 +42,35 @@ export function buildPdf(html, model, obj, options, log) {
   });
 }
 
+export function pdfFilename(pdfObj) {
+  return `${pdfObj.model}-${pdfObj._id}.pdf`;
+}
+
+export function pdfPath(pdfObj) {
+  const compilationId = pdfObj.model === 'compilation' ? pdfObj._id : pdfObj._compilation;
+  const filename = pdfFilename(pdfObj);
+  return `compilations/${compilationId}/${filename}`;
+}
+
 export function uploadPdfObject(pdfObj, log) {
   return new Promise((resolve) => {
     log('status', 'Uploading pdf.');
 
-    const client = config.mantaClient;
-    const compilationId = pdfObj.model === 'compilation' ? pdfObj._id : pdfObj._compilation;
-    const filename = `${pdfObj.model}-${pdfObj._id}.pdf`;
-    const path = `compilations/${compilationId}/${filename}`;
+    const filename = pdfFilename(pdfObj);
+    const path = pdfPath(pdfObj);
     const fullPath = `${process.env.MANTA_APP_PUBLIC_PATH}/${path}`;
 
+    const client = config.mantaClient;
     const pdfStream = new BufferStream(pdfObj.buffer);
 
     client.put(fullPath, pdfStream, { mkdirs: true }, (err) => {
-      if (err) { log('error', 'An error happened while uploading the pdf.', err.message); return; }
+      assert.equal(err, null);
       log('status', 'Finished uploading pdf.');
 
       const updatedAt = Date.now();
 
       client.info(fullPath, (err, results) => { // eslint-disable-line no-shadow
-        if (err) { log('error', 'An error happened while getting the pdf file info.', err.message); return; }
+        assert.equal(err, null);
         log('status', 'Found pdf file info');
 
         const fileUrl = `${process.env.MANTA_APP_URL}/${fullPath}`;
@@ -86,10 +96,8 @@ export function uploadPdfObject(pdfObj, log) {
 
 export function downloadPdf(pdfObj, log) {
   return new Promise((resolve, reject) => {
-    if (!pdfObj || !pdfObj.url) {
-      log('error', 'Trying to download pdf but pdf object is not complete.');
-      reject();
-    }
+    assert.ok(pdfObj && pdfObj.url);
+    log('status', 'Downloading pdf file.');
 
     const dir = '/tmp/compilation';
 
@@ -107,8 +115,7 @@ export function downloadPdf(pdfObj, log) {
       });
 
       stream.on('error', (err) => {
-        log('error', 'An error happened while downloading the pdf.', err.message);
-        reject();
+        reject(err);
       });
     });
   });

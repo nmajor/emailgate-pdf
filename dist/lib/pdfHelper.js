@@ -5,6 +5,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.getPdfPages = getPdfPages;
 exports.buildPdf = buildPdf;
+exports.pdfFilename = pdfFilename;
+exports.pdfPath = pdfPath;
 exports.uploadPdfObject = uploadPdfObject;
 exports.downloadPdf = downloadPdf;
 
@@ -23,6 +25,10 @@ var _BufferStream2 = _interopRequireDefault(_BufferStream);
 var _config = require('../config');
 
 var _config2 = _interopRequireDefault(_config);
+
+var _assert = require('assert');
+
+var _assert2 = _interopRequireDefault(_assert);
 
 var _https = require('https');
 
@@ -52,9 +58,7 @@ function buildPdf(html, model, obj, options, log) {
     log('status', 'Building pdf.');
 
     return _htmlPdf2.default.create(html, options).toBuffer(function (err, buffer) {
-      if (err) {
-        log('error', 'An error happened while generating a ' + model + ' PDF.', err.message);return;
-      }
+      _assert2.default.equal(err, null);
       log('status', 'Finished building pdf.');
 
       getPdfPages(buffer, log).then(function (pageCount) {
@@ -70,31 +74,36 @@ function buildPdf(html, model, obj, options, log) {
   });
 }
 
+function pdfFilename(pdfObj) {
+  return pdfObj.model + '-' + pdfObj._id + '.pdf';
+}
+
+function pdfPath(pdfObj) {
+  var compilationId = pdfObj.model === 'compilation' ? pdfObj._id : pdfObj._compilation;
+  var filename = pdfFilename(pdfObj);
+  return 'compilations/' + compilationId + '/' + filename;
+}
+
 function uploadPdfObject(pdfObj, log) {
   return new Promise(function (resolve) {
     log('status', 'Uploading pdf.');
 
-    var client = _config2.default.mantaClient;
-    var compilationId = pdfObj.model === 'compilation' ? pdfObj._id : pdfObj._compilation;
-    var filename = pdfObj.model + '-' + pdfObj._id + '.pdf';
-    var path = 'compilations/' + compilationId + '/' + filename;
+    var filename = pdfFilename(pdfObj);
+    var path = pdfPath(pdfObj);
     var fullPath = process.env.MANTA_APP_PUBLIC_PATH + '/' + path;
 
+    var client = _config2.default.mantaClient;
     var pdfStream = new _BufferStream2.default(pdfObj.buffer);
 
     client.put(fullPath, pdfStream, { mkdirs: true }, function (err) {
-      if (err) {
-        log('error', 'An error happened while uploading the pdf.', err.message);return;
-      }
+      _assert2.default.equal(err, null);
       log('status', 'Finished uploading pdf.');
 
       var updatedAt = Date.now();
 
       client.info(fullPath, function (err, results) {
         // eslint-disable-line no-shadow
-        if (err) {
-          log('error', 'An error happened while getting the pdf file info.', err.message);return;
-        }
+        _assert2.default.equal(err, null);
         log('status', 'Found pdf file info');
 
         var fileUrl = process.env.MANTA_APP_URL + '/' + fullPath;
@@ -120,10 +129,8 @@ function uploadPdfObject(pdfObj, log) {
 
 function downloadPdf(pdfObj, log) {
   return new Promise(function (resolve, reject) {
-    if (!pdfObj || !pdfObj.url) {
-      log('error', 'Trying to download pdf but pdf object is not complete.');
-      reject();
-    }
+    _assert2.default.ok(pdfObj && pdfObj.url);
+    log('status', 'Downloading pdf file.');
 
     var dir = '/tmp/compilation';
 
@@ -141,8 +148,7 @@ function downloadPdf(pdfObj, log) {
       });
 
       stream.on('error', function (err) {
-        log('error', 'An error happened while downloading the pdf.', err.message);
-        reject();
+        reject(err);
       });
     });
   });

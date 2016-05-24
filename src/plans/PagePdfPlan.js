@@ -3,11 +3,11 @@ import connection from '../connection';
 import * as pdfHelper from '../lib/pdfHelper';
 import assert from 'assert';
 
-class EmailPdfPlan {
+class PagePdfPlan {
   constructor(options) {
     this.task = options.task;
 
-    this.getEmail = this.getEmail.bind(this);
+    this.getPage = this.getPage.bind(this);
     this.buildPdf = this.buildPdf.bind(this);
     this.uploadPdf = this.uploadPdf.bind(this);
     this.savePdfResults = this.savePdfResults.bind(this);
@@ -15,29 +15,29 @@ class EmailPdfPlan {
     this.start = this.start.bind(this);
   }
 
-  getEmail() {
+  getPage() {
     return new Promise((resolve) => {
-      this.log('status', 'Finding Email.');
+      this.log('status', 'Finding Page.');
 
       connection((db) => {
-        const collection = db.collection('emails');
-        collection.findOne({ _id: this.task.emailId }, (err, doc) => {
+        const collection = db.collection('pages');
+        collection.findOne({ _id: this.task.pageId }, (err, doc) => {
           assert.equal(err, null);
           assert.ok(doc);
 
-          this.log('status', 'Found Email');
-          this.email = doc;
+          this.log('status', 'Found Page');
+          this.page = doc;
 
-          resolve(this.email);
+          resolve(this.page);
         });
       });
     });
   }
 
   buildPdf() {
-    const email = this.email;
-    const html = email.template.replace('[[BODY]]', email.body);
-    return pdfHelper.buildPdf(html, 'email', email, config.emailOptions, this.log);
+    const page = this.page;
+    const html = page.html;
+    return pdfHelper.buildPdf(html, 'page', page, config.pageOptions, this.log);
   }
 
   uploadPdf(pdfObj) {
@@ -49,8 +49,8 @@ class EmailPdfPlan {
       this.log('status', 'Saving pdf results');
 
       connection((db) => {
-        const collection = db.collection('emails');
-        collection.update({ _id: this.task.emailId }, { $set: { pdf: pdfResults } }, (err, result) => {
+        const collection = db.collection('pages');
+        collection.update({ _id: this.task.pageId }, { $set: { pdf: pdfResults } }, (err, result) => {
           assert.equal(err, null);
           assert.equal(result.result.n, 1);
 
@@ -69,7 +69,7 @@ class EmailPdfPlan {
   start() {
     this.log('status', 'Starting Task');
 
-    return this.getEmail()
+    return this.getPage()
     .then(() => {
       return this.buildPdf();
     })
@@ -80,4 +80,4 @@ class EmailPdfPlan {
   }
 }
 
-export default EmailPdfPlan;
+export default PagePdfPlan;

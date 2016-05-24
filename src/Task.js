@@ -1,11 +1,17 @@
 import _ from 'lodash';
-import EmailPdf from './plans/EmailPdfPlan';
+import EmailPdfPlan from './plans/EmailPdfPlan';
+import PagePdfPlan from './plans/PagePdfPlan';
+import CompilationPdfPlan from './plans/CompilationPdfPlan';
 // import assert from 'assert';
 
 export function planFactory(task) {
   switch (task.kind) {
     case 'email-pdf' :
-      return EmailPdf;
+      return EmailPdfPlan;
+    case 'page-pdf' :
+      return PagePdfPlan;
+    case 'compilation-pdf' :
+      return CompilationPdfPlan;
     default:
       return null;
   }

@@ -16,6 +16,14 @@ var _EmailPdfPlan = require('./plans/EmailPdfPlan');
 
 var _EmailPdfPlan2 = _interopRequireDefault(_EmailPdfPlan);
 
+var _PagePdfPlan = require('./plans/PagePdfPlan');
+
+var _PagePdfPlan2 = _interopRequireDefault(_PagePdfPlan);
+
+var _CompilationPdfPlan = require('./plans/CompilationPdfPlan');
+
+var _CompilationPdfPlan2 = _interopRequireDefault(_CompilationPdfPlan);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -26,6 +34,10 @@ function planFactory(task) {
   switch (task.kind) {
     case 'email-pdf':
       return _EmailPdfPlan2.default;
+    case 'page-pdf':
+      return _PagePdfPlan2.default;
+    case 'compilation-pdf':
+      return _CompilationPdfPlan2.default;
     default:
       return null;
   }
