@@ -27,14 +27,7 @@ class Task {
     this.Plan = planFactory(this);
   }
 
-  addLog(type, message, payload) {
-    const entry = {
-      type,
-      message,
-    };
-
-    if (payload) { entry.payload = payload; }
-
+  addLog(entry) {
     this.job.log(entry);
   }
 

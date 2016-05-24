@@ -15,7 +15,6 @@ class CompilationPdfPlan {
     this.compilePdfDocuments = this.compilePdfDocuments.bind(this);
     this.getCompilationPdfPages = this.getCompilationPdfPages.bind(this);
     this.savePdfResults = this.savePdfResults.bind(this);
-    this.log = this.log.bind(this);
     this.start = this.start.bind(this);
   }
 
@@ -51,14 +50,12 @@ class CompilationPdfPlan {
 
   downloadEmails() {
     let count = 1;
-    const emailCount = this.emails.length;
     let p = Promise.resolve();
 
     _.forEach(this.emails, (email) => {
       p = p.then(() => {
-        return pdfHelper.downloadPdf(email.pdf, this.log)
+        return pdfHelper.downloadPdf(email.pdf)
         .then((localPath) => {
-          this.log('status', `Downloaded pdf file ${email.pdf.filename} ${count}/${emailCount}`);
           count++;
           email.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
           return this.addPageNumberToEmail(email);
@@ -84,7 +81,6 @@ class CompilationPdfPlan {
       pspdftool.on('close', (code) => {
         if (code === 0) {
           email.pdf.localPath = newPath; // eslint-disable-line no-param-reassign
-          this.log('status', `Added page numbers to ${email.pdf.filename}`);
           resolve(email);
         } else {
           reject('pspdftool returned a bad exit code.');
@@ -95,14 +91,12 @@ class CompilationPdfPlan {
 
   downloadPages() {
     let count = 1;
-    const pageCount = this.pages.length;
     let p = Promise.resolve();
 
     _.forEach(this.pages, (page) => {
       p = p.then(() => {
-        return pdfHelper.downloadPdf(page.pdf, this.log)
+        return pdfHelper.downloadPdf(page.pdf)
         .then((localPath) => {
-          this.log('status', `Downloaded pdf file ${page.pdf.filename} ${count}/${pageCount}`);
           count++;
           page.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
           return Promise.resolve(page);
@@ -118,8 +112,8 @@ class CompilationPdfPlan {
       const sortedEmails = _.sortBy(this.emails, (email) => { return this.task.emailPositionMap[email._id]; });
       const sortedPages = _.sortBy(this.pages, (page) => { return this.task.pagePositionMap[page._id]; });
 
-      const pageFileArguments = _.map(sortedPages, (page) => { if (!page.pdf) { console.log('blah'); console.log(page); } return page.pdf.localPath; });
-      const emailFileArguments = _.map(sortedEmails, (email) => { if (!email.pdf) { console.log('blah'); console.log(email); } return email.pdf.localPath; });
+      const pageFileArguments = _.map(sortedPages, (page) => { return page.pdf.localPath; });
+      const emailFileArguments = _.map(sortedEmails, (email) => { return email.pdf.localPath; });
 
       const spawn = require('child_process').spawn;
       const pdftk = spawn('pdftk', [
@@ -143,7 +137,7 @@ class CompilationPdfPlan {
   }
 
   getCompilationPdfPages(buffer) {
-    return pdfHelper.getPdfPages(buffer, this.log)
+    return pdfHelper.getPdfPages(buffer)
     .then((pageCount) => {
       return Promise.resolve({
         model: 'compilation',
@@ -154,21 +148,13 @@ class CompilationPdfPlan {
     });
   }
 
-  log(type, message, payload) {
-    this.task.addLog(type, message, payload);
-  }
-
   savePdfResults(pdfResults) {
     return new Promise((resolve) => {
-      this.log('status', 'Saving pdf results');
-
       connection((db) => {
         const collection = db.collection('compilations');
         collection.update({ _id: this.task.compilationId }, { $set: { pdf: pdfResults } }, (err, result) => {
           assert.equal(err, null);
           assert.equal(result.result.n, 1);
-
-          this.log('status', 'Finished saving pdf results');
 
           resolve();
         });
@@ -177,29 +163,22 @@ class CompilationPdfPlan {
   }
 
   start() {
-    this.log('status', 'Starting Task');
-
     return Promise.all([
       this.getEmails(),
       this.getPages(),
     ])
     .then(() => {
-      this.log('status', `Found compilation emails(${this.emails.length}) and pages(${this.pages.length}).`);
-
       return Promise.all([
         this.downloadEmails(),
         this.downloadPages(),
       ]);
     })
     .then(() => {
-      this.log('status', 'Downloaded email and page pdf files.');
-
       return this.compilePdfDocuments();
     })
     .then(this.getCompilationPdfPages)
     .then((pdfObj) => {
-      this.log('status', `Compiled the pdfs into one ${pdfObj.pageCount} page file.`);
-      return pdfHelper.uploadPdfObject(pdfObj, this.log);
+      return pdfHelper.uploadPdfObject(pdfObj);
     })
     .then(this.savePdfResults);
   }

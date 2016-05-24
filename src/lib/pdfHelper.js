@@ -7,28 +7,22 @@ import assert from 'assert';
 import https from 'https';
 import fs from 'fs';
 
-export function getPdfPages(buffer, log) {
+export function getPdfPages(buffer) {
   return new Promise((resolve) => {
-    log('status', 'Counting pdf pages.');
-
     pdfjs.getDocument(buffer).then((doc) => {
       const pageCount = doc.numPages;
-      log('status', `Counted ${pageCount} pages.`);
 
       resolve(pageCount);
     });
   });
 }
 
-export function buildPdf(html, model, obj, options, log) {
+export function buildPdf(html, model, obj, options) {
   return new Promise((resolve) => {
-    log('status', 'Building pdf.');
-
     return pdf.create(html, options).toBuffer((err, buffer) => {
       assert.equal(err, null);
-      log('status', 'Finished building pdf.');
 
-      getPdfPages(buffer, log)
+      getPdfPages(buffer)
 			.then((pageCount) => {
         resolve({ // eslint-disable-line indent
           model,
@@ -52,10 +46,8 @@ export function pdfPath(pdfObj) {
   return `compilations/${compilationId}/${filename}`;
 }
 
-export function uploadPdfObject(pdfObj, log) {
+export function uploadPdfObject(pdfObj) {
   return new Promise((resolve) => {
-    log('status', 'Uploading pdf.');
-
     const filename = pdfFilename(pdfObj);
     const path = pdfPath(pdfObj);
     const fullPath = `${process.env.MANTA_APP_PUBLIC_PATH}/${path}`;
@@ -65,13 +57,11 @@ export function uploadPdfObject(pdfObj, log) {
 
     client.put(fullPath, pdfStream, { mkdirs: true }, (err) => {
       assert.equal(err, null);
-      log('status', 'Finished uploading pdf.');
 
       const updatedAt = Date.now();
 
       client.info(fullPath, (err, results) => { // eslint-disable-line no-shadow
         assert.equal(err, null);
-        log('status', 'Found pdf file info');
 
         const fileUrl = `${process.env.MANTA_APP_URL}/${fullPath}`;
 
@@ -94,10 +84,9 @@ export function uploadPdfObject(pdfObj, log) {
   });
 }
 
-export function downloadPdf(pdfObj, log) {
+export function downloadPdf(pdfObj) {
   return new Promise((resolve, reject) => {
     assert.ok(pdfObj && pdfObj.url);
-    log('status', 'Downloading pdf file.');
 
     const dir = '/tmp/compilation';
 
