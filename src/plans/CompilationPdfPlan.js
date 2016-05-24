@@ -7,14 +7,21 @@ class CompilationPdfPlan {
   constructor(options) {
     this.task = options.task;
 
+    // stepsTotal should be the number of times this.step() is called within this.start()
+    this.stepsTotal = 8;
+    this.stepsCompleted = 0;
+
     this.getEmails = this.getEmails.bind(this);
+    this.addEmailsProgressStepsToTotal = this.addEmailsProgressStepsToTotal.bind(this);
     this.getPages = this.getPages.bind(this);
+    this.addPagesProgressStepsToTotal = this.addPagesProgressStepsToTotal.bind(this);
     this.downloadEmails = this.downloadEmails.bind(this);
     this.addPageNumberToEmail = this.addPageNumberToEmail.bind(this);
     this.downloadPages = this.downloadPages.bind(this);
     this.compilePdfDocuments = this.compilePdfDocuments.bind(this);
     this.getCompilationPdfPages = this.getCompilationPdfPages.bind(this);
     this.savePdfResults = this.savePdfResults.bind(this);
+    this.step = this.step.bind(this);
     this.start = this.start.bind(this);
   }
 
@@ -27,10 +34,21 @@ class CompilationPdfPlan {
           assert.equal(err, null);
 
           this.emails = docs;
+          this.addEmailsProgressStepsToTotal();
           resolve();
         });
       });
     });
+  }
+
+  addEmailsProgressStepsToTotal() {
+    const emailsCount = this.emails.length;
+
+    // Add steps to download pdf of each email
+    this.stepsTotal += emailsCount;
+
+    // Add steps to add page numbers to each email
+    this.stepsTotal += emailsCount;
   }
 
   getPages() {
@@ -42,10 +60,18 @@ class CompilationPdfPlan {
           assert.equal(err, null);
 
           this.pages = docs;
+          this.addPagesProgressStepsToTotal();
           resolve(docs);
         });
       });
     });
+  }
+
+  addPagesProgressStepsToTotal() {
+    const pagesCount = this.pages.length;
+
+    // Add steps to download pdf of each email
+    this.stepsTotal += pagesCount;
   }
 
   downloadEmails() {
@@ -54,12 +80,12 @@ class CompilationPdfPlan {
 
     _.forEach(this.emails, (email) => {
       p = p.then(() => {
-        return pdfHelper.downloadPdf(email.pdf)
+        return this.step(pdfHelper.downloadPdf(email.pdf)
         .then((localPath) => {
           count++;
           email.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
           return this.addPageNumberToEmail(email);
-        });
+        }));
       });
     });
 
@@ -67,7 +93,7 @@ class CompilationPdfPlan {
   }
 
   addPageNumberToEmail(email) {
-    return new Promise((resolve, reject) => {
+    return this.step(new Promise((resolve, reject) => {
       const oldPath = email.pdf.localPath;
       const newPath = oldPath.replace(/\.pdf$/, '-paged.pdf');
       const startingPage = this.task.emailPageMap[email._id];
@@ -86,7 +112,7 @@ class CompilationPdfPlan {
           reject('pspdftool returned a bad exit code.');
         }
       });
-    });
+    }));
   }
 
   downloadPages() {
@@ -95,12 +121,12 @@ class CompilationPdfPlan {
 
     _.forEach(this.pages, (page) => {
       p = p.then(() => {
-        return pdfHelper.downloadPdf(page.pdf)
+        return this.step(pdfHelper.downloadPdf(page.pdf)
         .then((localPath) => {
           count++;
           page.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
           return Promise.resolve(page);
-        });
+        }));
       });
     });
 
@@ -162,25 +188,38 @@ class CompilationPdfPlan {
     });
   }
 
+  step(stepPromise, data) {
+    return stepPromise.then((result) => {
+      this.stepsCompleted += 1;
+      this.task.progress(this.stepsCompleted, this.stepsTotal, data);
+
+      return Promise.resolve(result);
+    });
+  }
+
   start() {
     return Promise.all([
-      this.getEmails(),
-      this.getPages(),
+      this.step(this.getEmails()),
+      this.step(this.getPages()),
     ])
     .then(() => {
       return Promise.all([
-        this.downloadEmails(),
-        this.downloadPages(),
+        this.step(this.downloadEmails()),
+        this.step(this.downloadPages()),
       ]);
     })
     .then(() => {
-      return this.compilePdfDocuments();
+      return this.step(this.compilePdfDocuments());
     })
-    .then(this.getCompilationPdfPages)
+    .then((buffer) => {
+      return this.step(this.getCompilationPdfPages(buffer));
+    })
     .then((pdfObj) => {
-      return pdfHelper.uploadPdfObject(pdfObj);
+      return this.step(pdfHelper.uploadPdfObject(pdfObj));
     })
-    .then(this.savePdfResults);
+    .then((results) => {
+      return this.step(this.savePdfResults(results));
+    });
   }
 }
 

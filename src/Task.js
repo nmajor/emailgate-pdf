@@ -27,8 +27,12 @@ class Task {
     this.Plan = planFactory(this);
   }
 
-  addLog(entry) {
+  log(entry) {
     this.job.log(entry);
+  }
+
+  progress(completed, total, data) {
+    this.job.progress(completed, total, data);
   }
 
   start() {

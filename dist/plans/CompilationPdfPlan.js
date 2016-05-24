@@ -36,15 +36,21 @@ var CompilationPdfPlan = function () {
 
     this.task = options.task;
 
+    // stepsTotal should be the number of times this.step() is called within this.start()
+    this.stepsTotal = 8;
+    this.stepsCompleted = 0;
+
     this.getEmails = this.getEmails.bind(this);
+    this.addEmailsProgressStepsToTotal = this.addEmailsProgressStepsToTotal.bind(this);
     this.getPages = this.getPages.bind(this);
+    this.addPagesProgressStepsToTotal = this.addPagesProgressStepsToTotal.bind(this);
     this.downloadEmails = this.downloadEmails.bind(this);
     this.addPageNumberToEmail = this.addPageNumberToEmail.bind(this);
     this.downloadPages = this.downloadPages.bind(this);
     this.compilePdfDocuments = this.compilePdfDocuments.bind(this);
     this.getCompilationPdfPages = this.getCompilationPdfPages.bind(this);
     this.savePdfResults = this.savePdfResults.bind(this);
-    this.log = this.log.bind(this);
+    this.step = this.step.bind(this);
     this.start = this.start.bind(this);
   }
 
@@ -60,10 +66,22 @@ var CompilationPdfPlan = function () {
             _assert2.default.equal(err, null);
 
             _this.emails = docs;
+            _this.addEmailsProgressStepsToTotal();
             resolve();
           });
         });
       });
+    }
+  }, {
+    key: 'addEmailsProgressStepsToTotal',
+    value: function addEmailsProgressStepsToTotal() {
+      var emailsCount = this.emails.length;
+
+      // Add steps to download pdf of each email
+      this.stepsTotal += emailsCount;
+
+      // Add steps to add page numbers to each email
+      this.stepsTotal += emailsCount;
     }
   }, {
     key: 'getPages',
@@ -77,10 +95,19 @@ var CompilationPdfPlan = function () {
             _assert2.default.equal(err, null);
 
             _this2.pages = docs;
+            _this2.addPagesProgressStepsToTotal();
             resolve(docs);
           });
         });
       });
+    }
+  }, {
+    key: 'addPagesProgressStepsToTotal',
+    value: function addPagesProgressStepsToTotal() {
+      var pagesCount = this.pages.length;
+
+      // Add steps to download pdf of each email
+      this.stepsTotal += pagesCount;
     }
   }, {
     key: 'downloadEmails',
@@ -88,17 +115,15 @@ var CompilationPdfPlan = function () {
       var _this3 = this;
 
       var count = 1;
-      var emailCount = this.emails.length;
       var p = Promise.resolve();
 
       _lodash2.default.forEach(this.emails, function (email) {
         p = p.then(function () {
-          return pdfHelper.downloadPdf(email.pdf, _this3.log).then(function (localPath) {
-            _this3.log('status', 'Downloaded pdf file ' + email.pdf.filename + ' ' + count + '/' + emailCount);
+          return _this3.step(pdfHelper.downloadPdf(email.pdf).then(function (localPath) {
             count++;
             email.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
             return _this3.addPageNumberToEmail(email);
-          });
+          }));
         });
       });
 
@@ -109,7 +134,7 @@ var CompilationPdfPlan = function () {
     value: function addPageNumberToEmail(email) {
       var _this4 = this;
 
-      return new Promise(function (resolve, reject) {
+      return this.step(new Promise(function (resolve, reject) {
         var oldPath = email.pdf.localPath;
         var newPath = oldPath.replace(/\.pdf$/, '-paged.pdf');
         var startingPage = _this4.task.emailPageMap[email._id];
@@ -119,13 +144,12 @@ var CompilationPdfPlan = function () {
         pspdftool.on('close', function (code) {
           if (code === 0) {
             email.pdf.localPath = newPath; // eslint-disable-line no-param-reassign
-            _this4.log('status', 'Added page numbers to ' + email.pdf.filename);
             resolve(email);
           } else {
             reject('pspdftool returned a bad exit code.');
           }
         });
-      });
+      }));
     }
   }, {
     key: 'downloadPages',
@@ -133,17 +157,15 @@ var CompilationPdfPlan = function () {
       var _this5 = this;
 
       var count = 1;
-      var pageCount = this.pages.length;
       var p = Promise.resolve();
 
       _lodash2.default.forEach(this.pages, function (page) {
         p = p.then(function () {
-          return pdfHelper.downloadPdf(page.pdf, _this5.log).then(function (localPath) {
-            _this5.log('status', 'Downloaded pdf file ' + page.pdf.filename + ' ' + count + '/' + pageCount);
+          return _this5.step(pdfHelper.downloadPdf(page.pdf).then(function (localPath) {
             count++;
             page.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
             return Promise.resolve(page);
-          });
+          }));
         });
       });
 
@@ -163,14 +185,10 @@ var CompilationPdfPlan = function () {
         });
 
         var pageFileArguments = _lodash2.default.map(sortedPages, function (page) {
-          if (!page.pdf) {
-            console.log('blah');console.log(page);
-          }return page.pdf.localPath;
+          return page.pdf.localPath;
         });
         var emailFileArguments = _lodash2.default.map(sortedEmails, function (email) {
-          if (!email.pdf) {
-            console.log('blah');console.log(email);
-          }return email.pdf.localPath;
+          return email.pdf.localPath;
         });
 
         var spawn = require('child_process').spawn;
@@ -194,7 +212,7 @@ var CompilationPdfPlan = function () {
     value: function getCompilationPdfPages(buffer) {
       var _this7 = this;
 
-      return pdfHelper.getPdfPages(buffer, this.log).then(function (pageCount) {
+      return pdfHelper.getPdfPages(buffer).then(function (pageCount) {
         return Promise.resolve({
           model: 'compilation',
           _id: _this7.task.compilationId,
@@ -204,25 +222,16 @@ var CompilationPdfPlan = function () {
       });
     }
   }, {
-    key: 'log',
-    value: function log(type, message, payload) {
-      this.task.addLog(type, message, payload);
-    }
-  }, {
     key: 'savePdfResults',
     value: function savePdfResults(pdfResults) {
       var _this8 = this;
 
       return new Promise(function (resolve) {
-        _this8.log('status', 'Saving pdf results');
-
         (0, _connection2.default)(function (db) {
           var collection = db.collection('compilations');
           collection.update({ _id: _this8.task.compilationId }, { $set: { pdf: pdfResults } }, function (err, result) {
             _assert2.default.equal(err, null);
             _assert2.default.equal(result.result.n, 1);
-
-            _this8.log('status', 'Finished saving pdf results');
 
             resolve();
           });
@@ -230,24 +239,33 @@ var CompilationPdfPlan = function () {
       });
     }
   }, {
-    key: 'start',
-    value: function start() {
+    key: 'step',
+    value: function step(stepPromise, data) {
       var _this9 = this;
 
-      this.log('status', 'Starting Task');
+      return stepPromise.then(function (result) {
+        _this9.stepsCompleted += 1;
+        _this9.task.progress(_this9.stepsCompleted, _this9.stepsTotal, data);
 
-      return Promise.all([this.getEmails(), this.getPages()]).then(function () {
-        _this9.log('status', 'Found compilation emails(' + _this9.emails.length + ') and pages(' + _this9.pages.length + ').');
+        return Promise.resolve(result);
+      });
+    }
+  }, {
+    key: 'start',
+    value: function start() {
+      var _this10 = this;
 
-        return Promise.all([_this9.downloadEmails(), _this9.downloadPages()]);
+      return Promise.all([this.step(this.getEmails()), this.step(this.getPages())]).then(function () {
+        return Promise.all([_this10.step(_this10.downloadEmails()), _this10.step(_this10.downloadPages())]);
       }).then(function () {
-        _this9.log('status', 'Downloaded email and page pdf files.');
-
-        return _this9.compilePdfDocuments();
-      }).then(this.getCompilationPdfPages).then(function (pdfObj) {
-        _this9.log('status', 'Compiled the pdfs into one ' + pdfObj.pageCount + ' page file.');
-        return pdfHelper.uploadPdfObject(pdfObj, _this9.log);
-      }).then(this.savePdfResults);
+        return _this10.step(_this10.compilePdfDocuments());
+      }).then(function (buffer) {
+        return _this10.step(_this10.getCompilationPdfPages(buffer));
+      }).then(function (pdfObj) {
+        return _this10.step(pdfHelper.uploadPdfObject(pdfObj));
+      }).then(function (results) {
+        return _this10.step(_this10.savePdfResults(results));
+      });
     }
   }]);
 

@@ -7,10 +7,15 @@ class PagePdfPlan {
   constructor(options) {
     this.task = options.task;
 
+    // stepsTotal should be the number of times this.step() is called within this.start()
+    this.stepsTotal = 4;
+    this.stepsCompleted = 0;
+
     this.getPage = this.getPage.bind(this);
     this.buildPdf = this.buildPdf.bind(this);
     this.uploadPdf = this.uploadPdf.bind(this);
     this.savePdfResults = this.savePdfResults.bind(this);
+    this.step = this.step.bind(this);
     this.start = this.start.bind(this);
   }
 
@@ -54,15 +59,26 @@ class PagePdfPlan {
     });
   }
 
+  step(stepPromise, data) {
+    return stepPromise.then((result) => {
+      this.stepsCompleted += 1;
+      this.task.progress(this.stepsCompleted, this.stepsTotal, data);
+
+      return Promise.resolve(result);
+    });
+  }
+
   start() {
-    return this.getPage()
+    return this.step(this.getPage())
     .then(() => {
-      return this.buildPdf();
+      return this.step(this.buildPdf());
     })
     .then((pdfObj) => {
-      return this.uploadPdf(pdfObj);
+      return this.step(this.uploadPdf(pdfObj));
     })
-    .then(this.savePdfResults);
+    .then((results) => {
+      return this.step(this.savePdfResults(results));
+    });
   }
 }
 

@@ -58,18 +58,14 @@ var Task = function () {
   }
 
   _createClass(Task, [{
-    key: 'addLog',
-    value: function addLog(type, message, payload) {
-      var entry = {
-        type: type,
-        message: message
-      };
-
-      if (payload) {
-        entry.payload = payload;
-      }
-
+    key: 'log',
+    value: function log(entry) {
       this.job.log(entry);
+    }
+  }, {
+    key: 'progress',
+    value: function progress(completed, total, data) {
+      this.job.progress(completed, total, data);
     }
   }, {
     key: 'start',

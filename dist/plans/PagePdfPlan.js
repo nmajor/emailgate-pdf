@@ -34,11 +34,15 @@ var PagePdfPlan = function () {
 
     this.task = options.task;
 
+    // stepsTotal should be the number of times this.step() is called within this.start()
+    this.stepsTotal = 4;
+    this.stepsCompleted = 0;
+
     this.getPage = this.getPage.bind(this);
     this.buildPdf = this.buildPdf.bind(this);
     this.uploadPdf = this.uploadPdf.bind(this);
     this.savePdfResults = this.savePdfResults.bind(this);
-    this.log = this.log.bind(this);
+    this.step = this.step.bind(this);
     this.start = this.start.bind(this);
   }
 
@@ -48,15 +52,12 @@ var PagePdfPlan = function () {
       var _this = this;
 
       return new Promise(function (resolve) {
-        _this.log('status', 'Finding Page.');
-
         (0, _connection2.default)(function (db) {
           var collection = db.collection('pages');
           collection.findOne({ _id: _this.task.pageId }, function (err, doc) {
             _assert2.default.equal(err, null);
             _assert2.default.ok(doc);
 
-            _this.log('status', 'Found Page');
             _this.page = doc;
 
             resolve(_this.page);
@@ -69,12 +70,12 @@ var PagePdfPlan = function () {
     value: function buildPdf() {
       var page = this.page;
       var html = page.html;
-      return pdfHelper.buildPdf(html, 'page', page, _config2.default.pageOptions, this.log);
+      return pdfHelper.buildPdf(html, 'page', page, _config2.default.pageOptions);
     }
   }, {
     key: 'uploadPdf',
     value: function uploadPdf(pdfObj) {
-      return pdfHelper.uploadPdfObject(pdfObj, this.log);
+      return pdfHelper.uploadPdfObject(pdfObj);
     }
   }, {
     key: 'savePdfResults',
@@ -82,15 +83,11 @@ var PagePdfPlan = function () {
       var _this2 = this;
 
       return new Promise(function (resolve) {
-        _this2.log('status', 'Saving pdf results');
-
         (0, _connection2.default)(function (db) {
           var collection = db.collection('pages');
           collection.update({ _id: _this2.task.pageId }, { $set: { pdf: pdfResults } }, function (err, result) {
             _assert2.default.equal(err, null);
             _assert2.default.equal(result.result.n, 1);
-
-            _this2.log('status', 'Finished saving pdf results');
 
             resolve();
           });
@@ -98,22 +95,29 @@ var PagePdfPlan = function () {
       });
     }
   }, {
-    key: 'log',
-    value: function log(type, message, payload) {
-      this.task.addLog(type, message, payload);
+    key: 'step',
+    value: function step(stepPromise, data) {
+      var _this3 = this;
+
+      return stepPromise.then(function (result) {
+        _this3.stepsCompleted += 1;
+        _this3.task.progress(_this3.stepsCompleted, _this3.stepsTotal, data);
+
+        return Promise.resolve(result);
+      });
     }
   }, {
     key: 'start',
     value: function start() {
-      var _this3 = this;
+      var _this4 = this;
 
-      this.log('status', 'Starting Task');
-
-      return this.getPage().then(function () {
-        return _this3.buildPdf();
+      return this.step(this.getPage()).then(function () {
+        return _this4.step(_this4.buildPdf());
       }).then(function (pdfObj) {
-        return _this3.uploadPdf(pdfObj);
-      }).then(this.savePdfResults);
+        return _this4.step(_this4.uploadPdf(pdfObj));
+      }).then(function (results) {
+        return _this4.step(_this4.savePdfResults(results));
+      });
     }
   }]);
 

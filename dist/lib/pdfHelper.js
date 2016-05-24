@@ -40,28 +40,22 @@ var _fs2 = _interopRequireDefault(_fs);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function getPdfPages(buffer, log) {
+function getPdfPages(buffer) {
   return new Promise(function (resolve) {
-    log('status', 'Counting pdf pages.');
-
     _pdfjsDist2.default.getDocument(buffer).then(function (doc) {
       var pageCount = doc.numPages;
-      log('status', 'Counted ' + pageCount + ' pages.');
 
       resolve(pageCount);
     });
   });
 }
 
-function buildPdf(html, model, obj, options, log) {
+function buildPdf(html, model, obj, options) {
   return new Promise(function (resolve) {
-    log('status', 'Building pdf.');
-
     return _htmlPdf2.default.create(html, options).toBuffer(function (err, buffer) {
       _assert2.default.equal(err, null);
-      log('status', 'Finished building pdf.');
 
-      getPdfPages(buffer, log).then(function (pageCount) {
+      getPdfPages(buffer).then(function (pageCount) {
         resolve({ // eslint-disable-line indent
           model: model,
           _id: obj._id,
@@ -84,10 +78,8 @@ function pdfPath(pdfObj) {
   return 'compilations/' + compilationId + '/' + filename;
 }
 
-function uploadPdfObject(pdfObj, log) {
+function uploadPdfObject(pdfObj) {
   return new Promise(function (resolve) {
-    log('status', 'Uploading pdf.');
-
     var filename = pdfFilename(pdfObj);
     var path = pdfPath(pdfObj);
     var fullPath = process.env.MANTA_APP_PUBLIC_PATH + '/' + path;
@@ -97,14 +89,12 @@ function uploadPdfObject(pdfObj, log) {
 
     client.put(fullPath, pdfStream, { mkdirs: true }, function (err) {
       _assert2.default.equal(err, null);
-      log('status', 'Finished uploading pdf.');
 
       var updatedAt = Date.now();
 
       client.info(fullPath, function (err, results) {
         // eslint-disable-line no-shadow
         _assert2.default.equal(err, null);
-        log('status', 'Found pdf file info');
 
         var fileUrl = process.env.MANTA_APP_URL + '/' + fullPath;
 
@@ -127,10 +117,9 @@ function uploadPdfObject(pdfObj, log) {
   });
 }
 
-function downloadPdf(pdfObj, log) {
+function downloadPdf(pdfObj) {
   return new Promise(function (resolve, reject) {
     _assert2.default.ok(pdfObj && pdfObj.url);
-    log('status', 'Downloading pdf file.');
 
     var dir = '/tmp/compilation';
 
