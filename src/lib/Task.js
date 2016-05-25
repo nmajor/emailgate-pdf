@@ -1,7 +1,7 @@
 import _ from 'lodash';
-import EmailPdfPlan from './plans/EmailPdfPlan';
-import PagePdfPlan from './plans/PagePdfPlan';
-import CompilationPdfPlan from './plans/CompilationPdfPlan';
+import EmailPdfPlan from '../plans/EmailPdfPlan';
+import PagePdfPlan from '../plans/PagePdfPlan';
+import CompilationPdfPlan from '../plans/CompilationPdfPlan';
 // import assert from 'assert';
 
 export function planFactory(task) {
