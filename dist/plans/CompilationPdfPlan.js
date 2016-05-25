@@ -68,7 +68,7 @@ var CompilationPdfPlan = function () {
       return new Promise(function (resolve) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('emails');
-          collection.find({ _compilation: _this.task.compilationId }).toArray(function (err, docs) {
+          collection.find({ _compilation: _this.task.referenceId }).toArray(function (err, docs) {
             _assert2.default.equal(err, null);
 
             _this.emails = docs;
@@ -97,7 +97,7 @@ var CompilationPdfPlan = function () {
       return new Promise(function (resolve) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('pages');
-          collection.find({ _compilation: _this2.task.compilationId }).toArray(function (err, docs) {
+          collection.find({ _compilation: _this2.task.referenceId }).toArray(function (err, docs) {
             _assert2.default.equal(err, null);
 
             _this2.pages = docs;
@@ -220,7 +220,7 @@ var CompilationPdfPlan = function () {
       return pdfHelper.getPdfPages(buffer).then(function (pageCount) {
         return Promise.resolve({
           model: 'compilation',
-          _id: _this7.task.compilationId,
+          _id: _this7.task.referenceId,
           pageCount: pageCount,
           buffer: buffer
         });
@@ -234,7 +234,7 @@ var CompilationPdfPlan = function () {
       return new Promise(function (resolve) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('compilations');
-          collection.update({ _id: _this8.task.compilationId }, { $set: { pdf: pdfResults } }, function (err, result) {
+          collection.update({ _id: _this8.task.referenceId }, { $set: { pdf: pdfResults } }, function (err, result) {
             _assert2.default.equal(err, null);
             _assert2.default.equal(result.result.n, 1);
 

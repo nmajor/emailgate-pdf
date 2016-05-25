@@ -32,7 +32,7 @@ class CompilationPdfPlan {
     return new Promise((resolve) => {
       connection((db) => {
         const collection = db.collection('emails');
-        collection.find({ _compilation: this.task.compilationId })
+        collection.find({ _compilation: this.task.referenceId })
         .toArray((err, docs) => {
           assert.equal(err, null);
 
@@ -58,7 +58,7 @@ class CompilationPdfPlan {
     return new Promise((resolve) => {
       connection((db) => {
         const collection = db.collection('pages');
-        collection.find({ _compilation: this.task.compilationId })
+        collection.find({ _compilation: this.task.referenceId })
         .toArray((err, docs) => {
           assert.equal(err, null);
 
@@ -169,7 +169,7 @@ class CompilationPdfPlan {
     .then((pageCount) => {
       return Promise.resolve({
         model: 'compilation',
-        _id: this.task.compilationId,
+        _id: this.task.referenceId,
         pageCount,
         buffer,
       });
@@ -180,7 +180,7 @@ class CompilationPdfPlan {
     return new Promise((resolve) => {
       connection((db) => {
         const collection = db.collection('compilations');
-        collection.update({ _id: this.task.compilationId }, { $set: { pdf: pdfResults } }, (err, result) => {
+        collection.update({ _id: this.task.referenceId }, { $set: { pdf: pdfResults } }, (err, result) => {
           assert.equal(err, null);
           assert.equal(result.result.n, 1);
 

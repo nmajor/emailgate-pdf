@@ -54,7 +54,7 @@ var EmailPdfPlan = function () {
       return new Promise(function (resolve) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('emails');
-          collection.findOne({ _id: _this.task.emailId }, function (err, doc) {
+          collection.findOne({ _id: _this.task.referenceId }, function (err, doc) {
             _assert2.default.equal(err, null);
             _assert2.default.ok(doc);
 
@@ -85,7 +85,7 @@ var EmailPdfPlan = function () {
       return new Promise(function (resolve) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('emails');
-          collection.update({ _id: _this2.task.emailId }, { $set: { pdf: pdfResults } }, function (err, result) {
+          collection.update({ _id: _this2.task.referenceId }, { $set: { pdf: pdfResults } }, function (err, result) {
             _assert2.default.equal(err, null);
             _assert2.default.equal(result.result.n, 1);
 

@@ -23,7 +23,7 @@ class EmailPdfPlan {
     return new Promise((resolve) => {
       connection((db) => {
         const collection = db.collection('emails');
-        collection.findOne({ _id: this.task.emailId }, (err, doc) => {
+        collection.findOne({ _id: this.task.referenceId }, (err, doc) => {
           assert.equal(err, null);
           assert.ok(doc);
 
@@ -49,7 +49,7 @@ class EmailPdfPlan {
     return new Promise((resolve) => {
       connection((db) => {
         const collection = db.collection('emails');
-        collection.update({ _id: this.task.emailId }, { $set: { pdf: pdfResults } }, (err, result) => {
+        collection.update({ _id: this.task.referenceId }, { $set: { pdf: pdfResults } }, (err, result) => {
           assert.equal(err, null);
           assert.equal(result.result.n, 1);
 
