@@ -18,9 +18,7 @@ export function getPdfPages(buffer) {
 
 export function buildPdf(html, model, obj, options) {
   return new Promise((resolve, reject) => {
-    console.log('blah html');
-    console.log(html);
-    return pdf.create(null, options).toBuffer((err, buffer) => { // eslint-disable-line consistent-return
+    return pdf.create(html, options).toBuffer((err, buffer) => { // eslint-disable-line consistent-return
       if (err) { return reject(err); }
 
       getPdfPages(buffer)

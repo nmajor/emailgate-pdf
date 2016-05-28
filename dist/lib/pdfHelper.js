@@ -26,10 +26,6 @@ var _config = require('../config');
 
 var _config2 = _interopRequireDefault(_config);
 
-var _assert = require('assert');
-
-var _assert2 = _interopRequireDefault(_assert);
-
 var _https = require('https');
 
 var _https2 = _interopRequireDefault(_https);
@@ -52,11 +48,10 @@ function getPdfPages(buffer) {
 
 function buildPdf(html, model, obj, options) {
   return new Promise(function (resolve, reject) {
-    console.log('blah html');
-    console.log(html);
-    return _htmlPdf2.default.create(null, options).toBuffer(function (err, buffer) {
+    return _htmlPdf2.default.create(html, options).toBuffer(function (err, buffer) {
+      // eslint-disable-line consistent-return
       if (err) {
-        reject(err);
+        return reject(err);
       }
 
       getPdfPages(buffer).then(function (pageCount) {
@@ -83,7 +78,7 @@ function pdfPath(pdfObj) {
 }
 
 function uploadPdfObject(pdfObj) {
-  return new Promise(function (resolve) {
+  return new Promise(function (resolve, reject) {
     var filename = pdfFilename(pdfObj);
     var path = pdfPath(pdfObj);
     var fullPath = process.env.MANTA_APP_PUBLIC_PATH + '/' + path;
@@ -92,13 +87,18 @@ function uploadPdfObject(pdfObj) {
     var pdfStream = new _BufferStream2.default(pdfObj.buffer);
 
     client.put(fullPath, pdfStream, { mkdirs: true }, function (err) {
-      _assert2.default.equal(err, null);
+      // eslint-disable-line consistent-return
+      if (err) {
+        return reject(err);
+      }
 
       var updatedAt = Date.now();
 
       client.info(fullPath, function (err, results) {
-        // eslint-disable-line no-shadow
-        _assert2.default.equal(err, null);
+        // eslint-disable-line
+        if (err) {
+          return reject(err);
+        }
 
         var fileUrl = process.env.MANTA_APP_URL + '/' + fullPath;
 
@@ -123,7 +123,10 @@ function uploadPdfObject(pdfObj) {
 
 function downloadPdf(pdfObj) {
   return new Promise(function (resolve, reject) {
-    _assert2.default.ok(pdfObj && pdfObj.url);
+    // eslint-disable-line consistent-return
+    if (!pdfObj || !pdfObj.url) {
+      return reject(new Error('Missing pdfObj or pdfObj.url'));
+    }
 
     var dir = '/tmp/compilation';
 

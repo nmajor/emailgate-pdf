@@ -18,10 +18,6 @@ var _pdfHelper = require('../lib/pdfHelper');
 
 var pdfHelper = _interopRequireWildcard(_pdfHelper);
 
-var _assert = require('assert');
-
-var _assert2 = _interopRequireDefault(_assert);
-
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -51,12 +47,17 @@ var PagePdfPlan = function () {
     value: function getPage() {
       var _this = this;
 
-      return new Promise(function (resolve) {
+      return new Promise(function (resolve, reject) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('pages');
           collection.findOne({ _id: _this.task.referenceId }, function (err, doc) {
-            _assert2.default.equal(err, null);
-            _assert2.default.ok(doc);
+            // eslint-disable-line consistent-return
+            if (err) {
+              return reject(err);
+            }
+            if (!doc) {
+              return reject(new Error('No document found.'));
+            }
 
             _this.page = doc;
 
@@ -82,12 +83,17 @@ var PagePdfPlan = function () {
     value: function savePdfResults(pdfResults) {
       var _this2 = this;
 
-      return new Promise(function (resolve) {
+      return new Promise(function (resolve, reject) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('pages');
           collection.update({ _id: _this2.task.referenceId }, { $set: { pdf: pdfResults } }, function (err, result) {
-            _assert2.default.equal(err, null);
-            _assert2.default.equal(result.result.n, 1);
+            // eslint-disable-line consistent-return
+            if (err) {
+              return reject(err);
+            }
+            if (result.result.n !== 1) {
+              return reject(new Error('No document updated.'));
+            }
 
             resolve();
           });

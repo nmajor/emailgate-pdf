@@ -22,10 +22,6 @@ var _connection = require('../connection');
 
 var _connection2 = _interopRequireDefault(_connection);
 
-var _assert = require('assert');
-
-var _assert2 = _interopRequireDefault(_assert);
-
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -65,11 +61,14 @@ var CompilationPdfPlan = function () {
     value: function getEmails() {
       var _this = this;
 
-      return new Promise(function (resolve) {
+      return new Promise(function (resolve, reject) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('emails');
           collection.find({ _compilation: _this.task.referenceId }).toArray(function (err, docs) {
-            _assert2.default.equal(err, null);
+            // eslint-disable-line consistent-return
+            if (err) {
+              return reject(err);
+            }
 
             _this.emails = docs;
             _this.addEmailsProgressStepsToTotal();
@@ -94,11 +93,14 @@ var CompilationPdfPlan = function () {
     value: function getPages() {
       var _this2 = this;
 
-      return new Promise(function (resolve) {
+      return new Promise(function (resolve, reject) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('pages');
           collection.find({ _compilation: _this2.task.referenceId }).toArray(function (err, docs) {
-            _assert2.default.equal(err, null);
+            // eslint-disable-line consistent-return
+            if (err) {
+              return reject(err);
+            }
 
             _this2.pages = docs;
             _this2.addPagesProgressStepsToTotal();
@@ -231,12 +233,17 @@ var CompilationPdfPlan = function () {
     value: function savePdfResults(pdfResults) {
       var _this8 = this;
 
-      return new Promise(function (resolve) {
+      return new Promise(function (resolve, reject) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('compilations');
           collection.update({ _id: _this8.task.referenceId }, { $set: { pdf: pdfResults } }, function (err, result) {
-            _assert2.default.equal(err, null);
-            _assert2.default.equal(result.result.n, 1);
+            // eslint-disable-line consistent-return
+            if (err) {
+              return reject(err);
+            }
+            if (result.result.n !== 1) {
+              return reject(new Error('No document updated.'));
+            }
 
             resolve();
           });

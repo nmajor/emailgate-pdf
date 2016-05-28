@@ -28,8 +28,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-// import assert from 'assert';
-
 function planFactory(task) {
   switch (task.kind) {
     case 'email-pdf':
