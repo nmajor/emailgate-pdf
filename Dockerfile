@@ -23,6 +23,7 @@ RUN npm install
 RUN npm install -g gulp
 
 COPY . ./
+RUN touch ./.env
 
 RUN gulp babel
 
