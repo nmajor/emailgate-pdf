@@ -2,7 +2,6 @@ import _ from 'lodash';
 import * as pdfHelper from '../lib/pdfHelper';
 import * as fileHelper from '../lib/fileHelper';
 import connection from '../connection';
-import assert from 'assert';
 
 class CompilationPdfPlan {
   constructor(options) {
@@ -29,12 +28,12 @@ class CompilationPdfPlan {
   }
 
   getEmails() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       connection((db) => {
         const collection = db.collection('emails');
         collection.find({ _compilation: this.task.referenceId })
-        .toArray((err, docs) => {
-          assert.equal(err, null);
+        .toArray((err, docs) => { // eslint-disable-line consistent-return
+          if (err) { return reject(err); }
 
           this.emails = docs;
           this.addEmailsProgressStepsToTotal();
@@ -55,12 +54,12 @@ class CompilationPdfPlan {
   }
 
   getPages() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       connection((db) => {
         const collection = db.collection('pages');
         collection.find({ _compilation: this.task.referenceId })
-        .toArray((err, docs) => {
-          assert.equal(err, null);
+        .toArray((err, docs) => { // eslint-disable-line consistent-return
+          if (err) { return reject(err); }
 
           this.pages = docs;
           this.addPagesProgressStepsToTotal();
@@ -177,12 +176,15 @@ class CompilationPdfPlan {
   }
 
   savePdfResults(pdfResults) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       connection((db) => {
         const collection = db.collection('compilations');
-        collection.update({ _id: this.task.referenceId }, { $set: { pdf: pdfResults } }, (err, result) => {
-          assert.equal(err, null);
-          assert.equal(result.result.n, 1);
+        collection.update(
+        { _id: this.task.referenceId },
+        { $set: { pdf: pdfResults } },
+        (err, result) => { // eslint-disable-line consistent-return
+          if (err) { return reject(err); }
+          if (result.result.n !== 1) { return reject(new Error('No document updated.')); }
 
           resolve();
         });

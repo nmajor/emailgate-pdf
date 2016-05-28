@@ -2,7 +2,6 @@ import pdf from 'html-pdf';
 import pdfjs from 'pdfjs-dist';
 import BufferStream from './BufferStream';
 import config from '../config';
-import assert from 'assert';
 
 import https from 'https';
 import fs from 'fs';
@@ -18,11 +17,11 @@ export function getPdfPages(buffer) {
 }
 
 export function buildPdf(html, model, obj, options) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     console.log('blah html');
     console.log(html);
-    return pdf.create(html, options).toBuffer((err, buffer) => {
-      assert.equal(err, null);
+    return pdf.create(null, options).toBuffer((err, buffer) => { // eslint-disable-line consistent-return
+      if (err) { return reject(err); }
 
       getPdfPages(buffer)
 			.then((pageCount) => {
@@ -49,7 +48,7 @@ export function pdfPath(pdfObj) {
 }
 
 export function uploadPdfObject(pdfObj) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const filename = pdfFilename(pdfObj);
     const path = pdfPath(pdfObj);
     const fullPath = `${process.env.MANTA_APP_PUBLIC_PATH}/${path}`;
@@ -57,13 +56,13 @@ export function uploadPdfObject(pdfObj) {
     const client = config.mantaClient;
     const pdfStream = new BufferStream(pdfObj.buffer);
 
-    client.put(fullPath, pdfStream, { mkdirs: true }, (err) => {
-      assert.equal(err, null);
+    client.put(fullPath, pdfStream, { mkdirs: true }, (err) => { // eslint-disable-line consistent-return
+      if (err) { return reject(err); }
 
       const updatedAt = Date.now();
 
-      client.info(fullPath, (err, results) => { // eslint-disable-line no-shadow
-        assert.equal(err, null);
+      client.info(fullPath, (err, results) => { // eslint-disable-line
+        if (err) { return reject(err); }
 
         const fileUrl = `${process.env.MANTA_APP_URL}/${fullPath}`;
 
@@ -87,8 +86,8 @@ export function uploadPdfObject(pdfObj) {
 }
 
 export function downloadPdf(pdfObj) {
-  return new Promise((resolve, reject) => {
-    assert.ok(pdfObj && pdfObj.url);
+  return new Promise((resolve, reject) => { // eslint-disable-line consistent-return
+    if (!pdfObj || !pdfObj.url) { return reject(new Error('Missing pdfObj or pdfObj.url')); }
 
     const dir = '/tmp/compilation';
 

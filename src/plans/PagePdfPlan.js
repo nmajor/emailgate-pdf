@@ -1,7 +1,6 @@
 import config from '../config';
 import connection from '../connection';
 import * as pdfHelper from '../lib/pdfHelper';
-import assert from 'assert';
 
 class PagePdfPlan {
   constructor(options) {
@@ -20,12 +19,12 @@ class PagePdfPlan {
   }
 
   getPage() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       connection((db) => {
         const collection = db.collection('pages');
-        collection.findOne({ _id: this.task.referenceId }, (err, doc) => {
-          assert.equal(err, null);
-          assert.ok(doc);
+        collection.findOne({ _id: this.task.referenceId }, (err, doc) => { // eslint-disable-line consistent-return
+          if (err) { return reject(err); }
+          if (!doc) { return reject(new Error('No document found.')); }
 
           this.page = doc;
 
@@ -46,12 +45,15 @@ class PagePdfPlan {
   }
 
   savePdfResults(pdfResults) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       connection((db) => {
         const collection = db.collection('pages');
-        collection.update({ _id: this.task.referenceId }, { $set: { pdf: pdfResults } }, (err, result) => {
-          assert.equal(err, null);
-          assert.equal(result.result.n, 1);
+        collection.update(
+        { _id: this.task.referenceId },
+        { $set: { pdf: pdfResults } },
+        (err, result) => { // eslint-disable-line consistent-return
+          if (err) { return reject(err); }
+          if (result.result.n !== 1) { return reject(new Error('No document updated.')); }
 
           resolve();
         });
