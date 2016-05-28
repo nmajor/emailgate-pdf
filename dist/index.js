@@ -1,8 +1,8 @@
 'use strict';
 
-var _task = require('./lib/task');
+var _Task = require('./lib/Task');
 
-var _task2 = _interopRequireDefault(_task);
+var _Task2 = _interopRequireDefault(_Task);
 
 var _queue = require('./queue');
 
@@ -15,7 +15,7 @@ require('babel-polyfill');
 require('dotenv').config({ silent: true });
 
 _queue2.default.process('worker', 5, function (job, done) {
-  var task = new _task2.default(job);
+  var task = new _Task2.default(job);
   task.start().then(function () {
     done();
   }).catch(function (err) {
