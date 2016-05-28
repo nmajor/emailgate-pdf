@@ -1,4 +1,4 @@
-require('dotenv').config({ silent: true });
+if (process.env.NODE_ENV !== 'production') { require('dotenv').config({ silent: true }); }
 import assert from 'assert';
 import { MongoClient } from 'mongodb';
 import config from './config';

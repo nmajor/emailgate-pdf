@@ -29,7 +29,9 @@ var _config2 = _interopRequireDefault(_config);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-require('dotenv').config({ silent: true });
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ silent: true });
+}
 
 
 var db = null;

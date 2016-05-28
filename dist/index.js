@@ -12,7 +12,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 require('babel-register');
 require('babel-polyfill');
-require('dotenv').config({ silent: true });
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ silent: true });
+}
 
 _queue2.default.process('worker', 5, function (job, done) {
   var task = new _Task2.default(job);

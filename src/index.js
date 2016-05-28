@@ -1,6 +1,6 @@
 require('babel-register');
 require('babel-polyfill');
-require('dotenv').config({ silent: true });
+if (process.env.NODE_ENV !== 'production') { require('dotenv').config({ silent: true }); }
 
 import Task from './lib/Task';
 import queue from './queue';
