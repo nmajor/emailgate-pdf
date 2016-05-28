@@ -52,6 +52,8 @@ function getPdfPages(buffer) {
 
 function buildPdf(html, model, obj, options) {
   return new Promise(function (resolve) {
+    console.log('blah html');
+    console.log(html);
     return _htmlPdf2.default.create(html, options).toBuffer(function (err, buffer) {
       _assert2.default.equal(err, null);
 

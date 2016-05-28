@@ -19,6 +19,8 @@ export function getPdfPages(buffer) {
 
 export function buildPdf(html, model, obj, options) {
   return new Promise((resolve) => {
+    console.log('blah html');
+    console.log(html);
     return pdf.create(html, options).toBuffer((err, buffer) => {
       assert.equal(err, null);
 
