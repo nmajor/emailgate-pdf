@@ -28,7 +28,9 @@ var EmailPdfPlan = function () {
   function EmailPdfPlan(options) {
     _classCallCheck(this, EmailPdfPlan);
 
-    this.task = options.task;
+    this.emailId = options.emailId;
+    this.progress = options.progress || function () {}; // eslint-disable-line func-names
+    this.data = options.data || {};
 
     // stepsTotal should be the number of times this.step() is called within this.start()
     this.stepsTotal = 4;
@@ -50,7 +52,7 @@ var EmailPdfPlan = function () {
       return new Promise(function (resolve, reject) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('emails');
-          collection.findOne({ _id: _this.task.referenceId }, function (err, doc) {
+          collection.findOne({ _id: _this.emailId }, function (err, doc) {
             // eslint-disable-line consistent-return
             if (err) {
               return reject(err);
@@ -86,7 +88,7 @@ var EmailPdfPlan = function () {
       return new Promise(function (resolve, reject) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('emails');
-          collection.update({ _id: _this2.task.referenceId }, { $set: { pdf: pdfResults } }, function (err, result) {
+          collection.update({ _id: _this2.emailId }, { $set: { pdf: pdfResults } }, function (err, result) {
             // eslint-disable-line consistent-return
             if (err) {
               return reject(err);
@@ -107,7 +109,7 @@ var EmailPdfPlan = function () {
 
       return stepPromise.then(function (result) {
         _this3.stepsCompleted += 1;
-        _this3.task.progress(_this3.stepsCompleted, _this3.stepsTotal, data);
+        _this3.progress(_this3.stepsCompleted, _this3.stepsTotal, data);
 
         return Promise.resolve(result);
       });

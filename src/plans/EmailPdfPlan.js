@@ -4,7 +4,9 @@ import * as pdfHelper from '../lib/pdfHelper';
 
 class EmailPdfPlan {
   constructor(options) {
-    this.task = options.task;
+    this.emailId = options.emailId;
+    this.progress = options.progress || function () {}; // eslint-disable-line func-names
+    this.data = options.data || {};
 
     // stepsTotal should be the number of times this.step() is called within this.start()
     this.stepsTotal = 4;
@@ -22,7 +24,7 @@ class EmailPdfPlan {
     return new Promise((resolve, reject) => {
       connection((db) => {
         const collection = db.collection('emails');
-        collection.findOne({ _id: this.task.referenceId }, (err, doc) => { // eslint-disable-line consistent-return
+        collection.findOne({ _id: this.emailId }, (err, doc) => { // eslint-disable-line consistent-return
           if (err) { return reject(err); }
           if (!doc) { return reject(new Error('No document found.')); }
 
@@ -49,7 +51,7 @@ class EmailPdfPlan {
       connection((db) => {
         const collection = db.collection('emails');
         collection.update(
-        { _id: this.task.referenceId },
+        { _id: this.emailId },
         { $set: { pdf: pdfResults } },
         (err, result) => { // eslint-disable-line consistent-return
           if (err) { return reject(err); }
@@ -64,7 +66,7 @@ class EmailPdfPlan {
   step(stepPromise, data) {
     return stepPromise.then((result) => {
       this.stepsCompleted += 1;
-      this.task.progress(this.stepsCompleted, this.stepsTotal, data);
+      this.progress(this.stepsCompleted, this.stepsTotal, data);
 
       return Promise.resolve(result);
     });

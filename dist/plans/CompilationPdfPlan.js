@@ -34,9 +34,11 @@ var CompilationPdfPlan = function () {
   function CompilationPdfPlan(options) {
     _classCallCheck(this, CompilationPdfPlan);
 
-    this.task = options.task;
+    this.compilationId = options.compilationId;
+    this.progress = options.progress || function () {}; // eslint-disable-line func-names
+    this.data = options.data || {};
 
-    this.trash = [];
+    this.cleanupFiles = [];
     // stepsTotal should be the number of times this.step() is called within this.start()
     this.stepsTotal = 8;
     this.stepsCompleted = 0;
@@ -64,7 +66,7 @@ var CompilationPdfPlan = function () {
       return new Promise(function (resolve, reject) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('emails');
-          collection.find({ _compilation: _this.task.referenceId }).toArray(function (err, docs) {
+          collection.find({ _compilation: _this.compilationId }).toArray(function (err, docs) {
             // eslint-disable-line consistent-return
             if (err) {
               return reject(err);
@@ -96,7 +98,7 @@ var CompilationPdfPlan = function () {
       return new Promise(function (resolve, reject) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('pages');
-          collection.find({ _compilation: _this2.task.referenceId }).toArray(function (err, docs) {
+          collection.find({ _compilation: _this2.compilationId }).toArray(function (err, docs) {
             // eslint-disable-line consistent-return
             if (err) {
               return reject(err);
@@ -127,7 +129,7 @@ var CompilationPdfPlan = function () {
       _lodash2.default.forEach(this.emails, function (email) {
         p = p.then(function () {
           return _this3.step(pdfHelper.downloadPdf(email.pdf).then(function (localPath) {
-            _this3.trash.push(localPath);
+            _this3.cleanupFiles.push(localPath);
             email.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
             return _this3.addPageNumberToEmail(email);
           }));
@@ -144,13 +146,13 @@ var CompilationPdfPlan = function () {
       return this.step(new Promise(function (resolve, reject) {
         var oldPath = email.pdf.localPath;
         var newPath = oldPath.replace(/\.pdf$/, '-paged.pdf');
-        var startingPage = _this4.task.emailPageMap[email._id];
+        var startingPage = _this4.data.emailPageMap[email._id];
         var spawn = require('child_process').spawn;
         var pspdftool = spawn('pspdftool', ['number(x=-1pt,y=-1pt,start=' + startingPage + ',size=10)', oldPath, newPath]);
 
         pspdftool.on('close', function (code) {
           if (code === 0) {
-            _this4.trash.push(newPath);
+            _this4.cleanupFiles.push(newPath);
             email.pdf.localPath = newPath; // eslint-disable-line no-param-reassign
             resolve(email);
           } else {
@@ -169,7 +171,7 @@ var CompilationPdfPlan = function () {
       _lodash2.default.forEach(this.pages, function (page) {
         p = p.then(function () {
           return _this5.step(pdfHelper.downloadPdf(page.pdf).then(function (localPath) {
-            _this5.trash.push(localPath);
+            _this5.cleanupFiles.push(localPath);
             page.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
             return Promise.resolve(page);
           }));
@@ -185,10 +187,10 @@ var CompilationPdfPlan = function () {
 
       return new Promise(function (resolve, reject) {
         var sortedEmails = _lodash2.default.sortBy(_this6.emails, function (email) {
-          return _this6.task.emailPositionMap[email._id];
+          return _this6.data.emailPositionMap[email._id];
         });
         var sortedPages = _lodash2.default.sortBy(_this6.pages, function (page) {
-          return _this6.task.pagePositionMap[page._id];
+          return _this6.data.pagePositionMap[page._id];
         });
 
         var pageFileArguments = _lodash2.default.map(sortedPages, function (page) {
@@ -222,7 +224,7 @@ var CompilationPdfPlan = function () {
       return pdfHelper.getPdfPages(buffer).then(function (pageCount) {
         return Promise.resolve({
           model: 'compilation',
-          _id: _this7.task.referenceId,
+          _id: _this7.compilationId,
           pageCount: pageCount,
           buffer: buffer
         });
@@ -236,7 +238,7 @@ var CompilationPdfPlan = function () {
       return new Promise(function (resolve, reject) {
         (0, _connection2.default)(function (db) {
           var collection = db.collection('compilations');
-          collection.update({ _id: _this8.task.referenceId }, { $set: { pdf: pdfResults } }, function (err, result) {
+          collection.update({ _id: _this8.compilationId }, { $set: { pdf: pdfResults } }, function (err, result) {
             // eslint-disable-line consistent-return
             if (err) {
               return reject(err);
@@ -257,7 +259,7 @@ var CompilationPdfPlan = function () {
 
       return stepPromise.then(function (result) {
         _this9.stepsCompleted += 1;
-        _this9.task.progress(_this9.stepsCompleted, _this9.stepsTotal, data);
+        _this9.progress(_this9.stepsCompleted, _this9.stepsTotal, data);
 
         return Promise.resolve(result);
       });
@@ -265,7 +267,7 @@ var CompilationPdfPlan = function () {
   }, {
     key: 'cleanup',
     value: function cleanup() {
-      return fileHelper.deleteFiles(this.trash);
+      return fileHelper.deleteFiles(this.cleanupFiles);
     }
   }, {
     key: 'start',

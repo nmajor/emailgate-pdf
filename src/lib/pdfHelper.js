@@ -45,6 +45,23 @@ export function pdfPath(pdfObj) {
   return `compilations/${compilationId}/${filename}`;
 }
 
+export function savePdfObject(pdfObj) {
+  return new Promise((resolve, reject) => {
+    const dir = '/tmp/compilation';
+
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+
+    const localPath = `${dir}/${pdfObj.filename}`;
+    fs.writeFile(localPath, pdfObj.buffer, (err) => {
+      if (err) { return reject(err); }
+
+      return resolve(localPath);
+    });
+  });
+}
+
 export function uploadPdfObject(pdfObj) {
   return new Promise((resolve, reject) => {
     const filename = pdfFilename(pdfObj);

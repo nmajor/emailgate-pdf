@@ -7,6 +7,7 @@ exports.getPdfPages = getPdfPages;
 exports.buildPdf = buildPdf;
 exports.pdfFilename = pdfFilename;
 exports.pdfPath = pdfPath;
+exports.savePdfObject = savePdfObject;
 exports.uploadPdfObject = uploadPdfObject;
 exports.downloadPdf = downloadPdf;
 
@@ -75,6 +76,25 @@ function pdfPath(pdfObj) {
   var compilationId = pdfObj.model === 'compilation' ? pdfObj._id : pdfObj._compilation;
   var filename = pdfFilename(pdfObj);
   return 'compilations/' + compilationId + '/' + filename;
+}
+
+function savePdfObject(pdfObj) {
+  return new Promise(function (resolve, reject) {
+    var dir = '/tmp/compilation';
+
+    if (!_fs2.default.existsSync(dir)) {
+      _fs2.default.mkdirSync(dir);
+    }
+
+    var localPath = dir + '/' + pdfObj.filename;
+    _fs2.default.writeFile(localPath, pdfObj.buffer, function (err) {
+      if (err) {
+        return reject(err);
+      }
+
+      return resolve(localPath);
+    });
+  });
 }
 
 function uploadPdfObject(pdfObj) {

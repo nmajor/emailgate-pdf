@@ -4,13 +4,10 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); // import _ from 'lodash';
+
 
 exports.planFactory = planFactory;
-
-var _lodash = require('lodash');
-
-var _lodash2 = _interopRequireDefault(_lodash);
 
 var _EmailPdfPlan = require('../plans/EmailPdfPlan');
 
@@ -29,13 +26,13 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function planFactory(task) {
-  switch (task.kind) {
+  switch (task.job.data.kind) {
     case 'email-pdf':
-      return _EmailPdfPlan2.default;
+      return new _EmailPdfPlan2.default({ emailId: task.job.data.referenceId, progress: task.progress, data: task.job.data });
     case 'page-pdf':
-      return _PagePdfPlan2.default;
+      return new _PagePdfPlan2.default({ pageId: task.job.data.referenceId, progress: task.progress, data: task.job.data });
     case 'compilation-pdf':
-      return _CompilationPdfPlan2.default;
+      return new _CompilationPdfPlan2.default({ compilationId: task.job.data.referenceId, progress: task.progress, data: task.job.data });
     default:
       return null;
   }
@@ -43,16 +40,10 @@ function planFactory(task) {
 
 var Task = function () {
   function Task(job) {
-    var _this = this;
-
     _classCallCheck(this, Task);
 
-    _lodash2.default.forEach(job.data, function (value, key) {
-      _this[key] = value;
-    });
     this.job = job;
-
-    this.Plan = planFactory(this);
+    this.progress = this.progress.bind(this);
   }
 
   _createClass(Task, [{
@@ -68,7 +59,7 @@ var Task = function () {
   }, {
     key: 'start',
     value: function start() {
-      return new this.Plan({ task: this }).start();
+      return planFactory(this).start();
     }
   }]);
 

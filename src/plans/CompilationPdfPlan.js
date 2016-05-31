@@ -5,9 +5,11 @@ import connection from '../connection';
 
 class CompilationPdfPlan {
   constructor(options) {
-    this.task = options.task;
+    this.compilationId = options.compilationId;
+    this.progress = options.progress || function () {}; // eslint-disable-line func-names
+    this.data = options.data || {};
 
-    this.trash = [];
+    this.cleanupFiles = [];
     // stepsTotal should be the number of times this.step() is called within this.start()
     this.stepsTotal = 8;
     this.stepsCompleted = 0;
@@ -31,7 +33,7 @@ class CompilationPdfPlan {
     return new Promise((resolve, reject) => {
       connection((db) => {
         const collection = db.collection('emails');
-        collection.find({ _compilation: this.task.referenceId })
+        collection.find({ _compilation: this.compilationId })
         .toArray((err, docs) => { // eslint-disable-line consistent-return
           if (err) { return reject(err); }
 
@@ -57,7 +59,7 @@ class CompilationPdfPlan {
     return new Promise((resolve, reject) => {
       connection((db) => {
         const collection = db.collection('pages');
-        collection.find({ _compilation: this.task.referenceId })
+        collection.find({ _compilation: this.compilationId })
         .toArray((err, docs) => { // eslint-disable-line consistent-return
           if (err) { return reject(err); }
 
@@ -83,7 +85,7 @@ class CompilationPdfPlan {
       p = p.then(() => {
         return this.step(pdfHelper.downloadPdf(email.pdf)
         .then((localPath) => {
-          this.trash.push(localPath);
+          this.cleanupFiles.push(localPath);
           email.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
           return this.addPageNumberToEmail(email);
         }));
@@ -97,7 +99,7 @@ class CompilationPdfPlan {
     return this.step(new Promise((resolve, reject) => {
       const oldPath = email.pdf.localPath;
       const newPath = oldPath.replace(/\.pdf$/, '-paged.pdf');
-      const startingPage = this.task.emailPageMap[email._id];
+      const startingPage = this.data.emailPageMap[email._id];
       const spawn = require('child_process').spawn;
       const pspdftool = spawn('pspdftool', [
         `number(x=-1pt,y=-1pt,start=${startingPage},size=10)`,
@@ -107,7 +109,7 @@ class CompilationPdfPlan {
 
       pspdftool.on('close', (code) => {
         if (code === 0) {
-          this.trash.push(newPath);
+          this.cleanupFiles.push(newPath);
           email.pdf.localPath = newPath; // eslint-disable-line no-param-reassign
           resolve(email);
         } else {
@@ -124,7 +126,7 @@ class CompilationPdfPlan {
       p = p.then(() => {
         return this.step(pdfHelper.downloadPdf(page.pdf)
         .then((localPath) => {
-          this.trash.push(localPath);
+          this.cleanupFiles.push(localPath);
           page.pdf.localPath = localPath; // eslint-disable-line no-param-reassign
           return Promise.resolve(page);
         }));
@@ -136,8 +138,8 @@ class CompilationPdfPlan {
 
   compilePdfDocuments() {
     return new Promise((resolve, reject) => {
-      const sortedEmails = _.sortBy(this.emails, (email) => { return this.task.emailPositionMap[email._id]; });
-      const sortedPages = _.sortBy(this.pages, (page) => { return this.task.pagePositionMap[page._id]; });
+      const sortedEmails = _.sortBy(this.emails, (email) => { return this.data.emailPositionMap[email._id]; });
+      const sortedPages = _.sortBy(this.pages, (page) => { return this.data.pagePositionMap[page._id]; });
 
       const pageFileArguments = _.map(sortedPages, (page) => { return page.pdf.localPath; });
       const emailFileArguments = _.map(sortedEmails, (email) => { return email.pdf.localPath; });
@@ -168,7 +170,7 @@ class CompilationPdfPlan {
     .then((pageCount) => {
       return Promise.resolve({
         model: 'compilation',
-        _id: this.task.referenceId,
+        _id: this.compilationId,
         pageCount,
         buffer,
       });
@@ -180,7 +182,7 @@ class CompilationPdfPlan {
       connection((db) => {
         const collection = db.collection('compilations');
         collection.update(
-        { _id: this.task.referenceId },
+        { _id: this.compilationId },
         { $set: { pdf: pdfResults } },
         (err, result) => { // eslint-disable-line consistent-return
           if (err) { return reject(err); }
@@ -195,14 +197,14 @@ class CompilationPdfPlan {
   step(stepPromise, data) {
     return stepPromise.then((result) => {
       this.stepsCompleted += 1;
-      this.task.progress(this.stepsCompleted, this.stepsTotal, data);
+      this.progress(this.stepsCompleted, this.stepsTotal, data);
 
       return Promise.resolve(result);
     });
   }
 
   cleanup() {
-    return fileHelper.deleteFiles(this.trash);
+    return fileHelper.deleteFiles(this.cleanupFiles);
   }
 
   start() {

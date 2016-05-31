@@ -1,16 +1,16 @@
-import _ from 'lodash';
+// import _ from 'lodash';
 import EmailPdfPlan from '../plans/EmailPdfPlan';
 import PagePdfPlan from '../plans/PagePdfPlan';
 import CompilationPdfPlan from '../plans/CompilationPdfPlan';
 
 export function planFactory(task) {
-  switch (task.kind) {
+  switch (task.job.data.kind) {
     case 'email-pdf' :
-      return EmailPdfPlan;
+      return new EmailPdfPlan({ emailId: task.job.data.referenceId, progress: task.progress, data: task.job.data });
     case 'page-pdf' :
-      return PagePdfPlan;
+      return new PagePdfPlan({ pageId: task.job.data.referenceId, progress: task.progress, data: task.job.data });
     case 'compilation-pdf' :
-      return CompilationPdfPlan;
+      return new CompilationPdfPlan({ compilationId: task.job.data.referenceId, progress: task.progress, data: task.job.data });
     default:
       return null;
   }
@@ -18,12 +18,8 @@ export function planFactory(task) {
 
 class Task {
   constructor(job) {
-    _.forEach(job.data, (value, key) => {
-      this[key] = value;
-    });
     this.job = job;
-
-    this.Plan = planFactory(this);
+    this.progress = this.progress.bind(this);
   }
 
   log(entry) {
@@ -35,7 +31,7 @@ class Task {
   }
 
   start() {
-    return new this.Plan({ task: this }).start();
+    return planFactory(this).start();
   }
 }
 
