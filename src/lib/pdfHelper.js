@@ -5,6 +5,7 @@ import config from '../config';
 
 import https from 'https';
 import fs from 'fs';
+import crypto from 'crypto';
 
 export function getPdfPages(buffer) {
   return new Promise((resolve) => {
@@ -27,6 +28,7 @@ export function buildPdf(html, model, obj, options) {
           model,
           _id: obj._id,
           _compilation: obj._compilation,
+          modelVersion: obj.updatedAt,
           pageCount,
           buffer,
         });
@@ -48,6 +50,7 @@ export function pdfPath(pdfObj) {
 export function savePdfObject(pdfObj) {
   return new Promise((resolve, reject) => {
     const dir = '/tmp/compilation';
+    pdfObj.filename = pdfObj.filename || pdfFilename(pdfObj); // eslint-disable-line no-param-reassign
 
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir);
@@ -84,6 +87,7 @@ export function uploadPdfObject(pdfObj) {
         resolve({
           model: pdfObj.model,
           _id: pdfObj._id,
+          modelVersion: pdfObj.modelVersion,
           filename,
           pageCount: pdfObj.pageCount,
           url: fileUrl,
@@ -111,11 +115,26 @@ export function downloadPdf(pdfObj) {
     }
 
     const localPath = `${dir}/${pdfObj.filename}`;
+
+    // crypto.createHash('md5').update(data).digest("hex");
+
+    if (fs.existsSync(localPath)) {
+      const fileMd5 = crypto.createHash('md5');
+      fileMd5.write(fs.readFileSync(localPath));
+      fileMd5.end();
+      if (fileMd5.read().toString('base64') === pdfObj.md5) {
+        return resolve(localPath);
+      }
+    }
+
+    // const md5 = crypto.createHash('md5');
     const file = fs.createWriteStream(localPath);
     https.get(pdfObj.url, (stream) => {
       stream.pipe(file);
+      // stream.pipe(md5);
 
       stream.on('end', () => {
+        // md5.end();
         resolve(localPath);
       });
 

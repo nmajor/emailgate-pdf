@@ -35,6 +35,10 @@ var _fs = require('fs');
 
 var _fs2 = _interopRequireDefault(_fs);
 
+var _crypto = require('crypto');
+
+var _crypto2 = _interopRequireDefault(_crypto);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function getPdfPages(buffer) {
@@ -60,6 +64,7 @@ function buildPdf(html, model, obj, options) {
           model: model,
           _id: obj._id,
           _compilation: obj._compilation,
+          modelVersion: obj.updatedAt,
           pageCount: pageCount,
           buffer: buffer
         });
@@ -81,6 +86,7 @@ function pdfPath(pdfObj) {
 function savePdfObject(pdfObj) {
   return new Promise(function (resolve, reject) {
     var dir = '/tmp/compilation';
+    pdfObj.filename = pdfObj.filename || pdfFilename(pdfObj); // eslint-disable-line no-param-reassign
 
     if (!_fs2.default.existsSync(dir)) {
       _fs2.default.mkdirSync(dir);
@@ -125,6 +131,7 @@ function uploadPdfObject(pdfObj) {
         resolve({
           model: pdfObj.model,
           _id: pdfObj._id,
+          modelVersion: pdfObj.modelVersion,
           filename: filename,
           pageCount: pdfObj.pageCount,
           url: fileUrl,
@@ -155,11 +162,26 @@ function downloadPdf(pdfObj) {
     }
 
     var localPath = dir + '/' + pdfObj.filename;
+
+    // crypto.createHash('md5').update(data).digest("hex");
+
+    if (_fs2.default.existsSync(localPath)) {
+      var fileMd5 = _crypto2.default.createHash('md5');
+      fileMd5.write(_fs2.default.readFileSync(localPath));
+      fileMd5.end();
+      if (fileMd5.read().toString('base64') === pdfObj.md5) {
+        return resolve(localPath);
+      }
+    }
+
+    // const md5 = crypto.createHash('md5');
     var file = _fs2.default.createWriteStream(localPath);
     _https2.default.get(pdfObj.url, function (stream) {
       stream.pipe(file);
+      // stream.pipe(md5);
 
       stream.on('end', function () {
+        // md5.end();
         resolve(localPath);
       });
 

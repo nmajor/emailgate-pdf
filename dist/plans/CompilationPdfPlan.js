@@ -267,7 +267,8 @@ var CompilationPdfPlan = function () {
   }, {
     key: 'cleanup',
     value: function cleanup() {
-      return fileHelper.deleteFiles(this.cleanupFiles);
+      return Promise.resolve();
+      // return fileHelper.deleteFiles(this.cleanupFiles);
     }
   }, {
     key: 'start',
@@ -280,6 +281,11 @@ var CompilationPdfPlan = function () {
         return _this10.step(_this10.compilePdfDocuments());
       }).then(function (buffer) {
         return _this10.step(_this10.getCompilationPdfPages(buffer));
+      }).then(function (pdfObj) {
+        return _this10.step(pdfHelper.savePdfObject(pdfObj)).then(function (localPath) {
+          pdfObj.localPath = localPath; // eslint-disable-line no-param-reassign
+          return Promise.resolve(pdfObj);
+        });
       }).then(function (pdfObj) {
         return _this10.step(pdfHelper.uploadPdfObject(pdfObj));
       }).then(function (results) {

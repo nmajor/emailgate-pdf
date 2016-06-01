@@ -204,7 +204,8 @@ class CompilationPdfPlan {
   }
 
   cleanup() {
-    return fileHelper.deleteFiles(this.cleanupFiles);
+    return Promise.resolve();
+    // return fileHelper.deleteFiles(this.cleanupFiles);
   }
 
   start() {
@@ -223,6 +224,13 @@ class CompilationPdfPlan {
     })
     .then((buffer) => {
       return this.step(this.getCompilationPdfPages(buffer));
+    })
+    .then((pdfObj) => {
+      return this.step(pdfHelper.savePdfObject(pdfObj))
+      .then((localPath) => {
+        pdfObj.localPath = localPath; // eslint-disable-line no-param-reassign
+        return Promise.resolve(pdfObj);
+      });
     })
     .then((pdfObj) => {
       return this.step(pdfHelper.uploadPdfObject(pdfObj));
