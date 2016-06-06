@@ -77,7 +77,7 @@ export function uploadPdfObject(pdfObj) {
     client.put(fullPath, pdfStream, { mkdirs: true }, (err) => { // eslint-disable-line consistent-return
       if (err) { return reject(err); }
 
-      const updatedAt = Date.now();
+      const updatedAt = new Date();
 
       client.info(fullPath, (err, results) => { // eslint-disable-line
         if (err) { return reject(err); }

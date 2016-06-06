@@ -118,7 +118,7 @@ function uploadPdfObject(pdfObj) {
         return reject(err);
       }
 
-      var updatedAt = Date.now();
+      var updatedAt = new Date();
 
       client.info(fullPath, function (err, results) {
         // eslint-disable-line
