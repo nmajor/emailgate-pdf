@@ -40,7 +40,7 @@ var CompilationPdfPlan = function () {
 
     this.cleanupFiles = [];
     // stepsTotal should be the number of times this.step() is called within this.start()
-    this.stepsTotal = 8;
+    this.stepsTotal = 10;
     this.stepsCompleted = 0;
 
     this.getEmails = this.getEmails.bind(this);
@@ -267,8 +267,7 @@ var CompilationPdfPlan = function () {
   }, {
     key: 'cleanup',
     value: function cleanup() {
-      return Promise.resolve();
-      // return fileHelper.deleteFiles(this.cleanupFiles);
+      return fileHelper.deleteFiles(this.cleanupFiles);
     }
   }, {
     key: 'start',

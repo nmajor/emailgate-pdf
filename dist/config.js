@@ -20,11 +20,23 @@ var config = {
   emailOptions: {
     height: '10.5in',
     width: '8in',
+    border: {
+      top: '0.6in',
+      right: '0.6in',
+      bottom: '0.6in',
+      left: '0.6in'
+    },
     timeout: 120000
   },
   pageOptions: {
     height: '10.5in',
     width: '8in',
+    border: {
+      top: '0.6in',
+      right: '0.6in',
+      bottom: '0.6in',
+      left: '0.6in'
+    },
     timeout: 120000
   },
   mantaClient: _manta2.default.createClient({
