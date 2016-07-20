@@ -111,8 +111,15 @@ function uploadPdfObject(pdfObj) {
 
     var client = _config2.default.mantaClient;
     var pdfStream = new _BufferStream2.default(pdfObj.buffer);
+    var options = {
+      mkdirs: true,
+      headers: {
+        'Access-Control-Allow-Headers': 'Range',
+        'Access-Control-Expose-Headers': 'Accept-Ranges, Content-Encoding, Content-Length, Content-Range'
+      }
+    };
 
-    client.put(fullPath, pdfStream, { mkdirs: true }, function (err) {
+    client.put(fullPath, pdfStream, options, function (err) {
       // eslint-disable-line consistent-return
       if (err) {
         return reject(err);

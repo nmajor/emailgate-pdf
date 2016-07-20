@@ -73,8 +73,15 @@ export function uploadPdfObject(pdfObj) {
 
     const client = config.mantaClient;
     const pdfStream = new BufferStream(pdfObj.buffer);
+    const options = {
+      mkdirs: true,
+      headers: {
+        'Access-Control-Allow-Headers': 'Range',
+        'Access-Control-Expose-Headers': 'Accept-Ranges, Content-Encoding, Content-Length, Content-Range',
+      },
+    };
 
-    client.put(fullPath, pdfStream, { mkdirs: true }, (err) => { // eslint-disable-line consistent-return
+    client.put(fullPath, pdfStream, options, (err) => { // eslint-disable-line consistent-return
       if (err) { return reject(err); }
 
       const updatedAt = new Date();
