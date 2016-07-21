@@ -114,8 +114,9 @@ function uploadPdfObject(pdfObj) {
     var options = {
       mkdirs: true,
       headers: {
-        'Access-Control-Allow-Headers': 'Range',
-        'Access-Control-Expose-Headers': 'Accept-Ranges, Content-Encoding, Content-Length, Content-Range'
+        'access-control-allow-headers': 'Range',
+        'access-control-expose-headers': 'Accept-Ranges, Content-Encoding, Content-Length, Content-Range',
+        'access-control-allow-origin': '*'
       }
     };
 
