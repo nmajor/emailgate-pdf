@@ -79,6 +79,7 @@ export function uploadPdfObject(pdfObj) {
         'access-control-allow-headers': 'Range',
         'access-control-expose-headers': 'Accept-Ranges, Content-Encoding, Content-Length, Content-Range',
         'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'GET, OPTIONS',
       },
     };
 
