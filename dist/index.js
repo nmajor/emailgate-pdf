@@ -16,7 +16,9 @@ if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ silent: true });
 }
 
-_queue2.default.process('worker', 5, function (job, done) {
+var workers = process.env.WORKER_PROCESSES || 10;
+
+_queue2.default.process('worker', workers, function (job, done) {
   var task = new _Task2.default(job);
   task.start().then(function () {
     done();

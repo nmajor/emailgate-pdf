@@ -5,7 +5,9 @@ if (process.env.NODE_ENV !== 'production') { require('dotenv').config({ silent: 
 import Task from './lib/Task';
 import queue from './queue';
 
-queue.process('worker', 5, (job, done) => {
+const workers = process.env.WORKER_PROCESSES || 10;
+
+queue.process('worker', workers, (job, done) => {
   const task = new Task(job);
   task.start()
   .then(() => {
